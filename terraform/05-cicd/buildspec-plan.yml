@@ -1,0 +1,40 @@
+version: 0.2
+
+# plan 단계. 출력 아티팩트에 tfplan 바이너리를 담아 apply 단계로 넘깁니다.
+# ★ tfplan은 평문입니다. 아티팩트 버킷 암호화와 접근 제어가 곧 비밀 보호입니다.
+
+phases:
+  install:
+    commands:
+      - |
+        curl -fsSL -o /tmp/tf.zip \
+          "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+        # 체크섬 검증 — 생략하지 마세요
+        curl -fsSL -o /tmp/tf.sums \
+          "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_SHA256SUMS"
+        ( cd /tmp && grep "linux_amd64.zip" tf.sums | sed 's|terraform_.*_linux_amd64.zip|tf.zip|' | sha256sum -c - )
+        unzip -o -q /tmp/tf.zip -d /tmp/bin
+        export PATH="/tmp/bin:$PATH"
+        terraform version
+
+  build:
+    commands:
+      - export PATH="/tmp/bin:$PATH"
+      - cd "$TF_DIR"
+      - terraform fmt -check -recursive || { echo "terraform fmt 를 돌리고 다시 올려주세요"; exit 1; }
+      - terraform init -input=false
+      - terraform validate
+      - terraform plan -input=false -lock-timeout=5m -out=tfplan
+      # 사람이 읽을 요약 + 기계가 읽을 JSON 둘 다 남깁니다
+      - terraform show -no-color tfplan | tee plan.txt
+      - terraform show -json tfplan > plan.json
+      # 삭제가 몇 건인지 눈에 띄게
+      - |
+        DESTROY=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length' plan.json)
+        echo "=== 삭제 예정 리소스: ${DESTROY} 건 ==="
+        [ "$DESTROY" -eq 0 ] || echo "!!! 승인 전에 plan.txt 를 꼭 읽으세요 !!!"
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: .

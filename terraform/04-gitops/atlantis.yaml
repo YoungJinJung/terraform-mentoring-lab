@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────
+# 리포 측 Atlantis 설정 (서버 측 설정은 lab/atlantis/repos.yaml)
+#
+# version 3이 현재 형식입니다. 서버 측에서 allowed_overrides로
+# 허용한 키만 여기서 덮어쓸 수 있습니다.
+# ─────────────────────────────────────────────────────────────────────
+version: 3
+
+# 변경된 디렉터리만 계획하게 합니다. 리포가 커질수록 이게 중요해집니다.
+automerge: false
+parallel_plan: true
+parallel_apply: false # state 충돌을 피하려면 apply는 직렬
+
+projects:
+  - name: foundation
+    dir: terraform/01-foundation
+    workspace: default
+    terraform_version: v1.16.1
+    autoplan:
+      when_modified: ["*.tf", "../_shared/*.tf", "*.tfvars"]
+      enabled: true
+    apply_requirements: [approved, mergeable, undiverged]
+
+  - name: network
+    dir: terraform/02-network
+    terraform_version: v1.16.1
+    autoplan:
+      when_modified: ["*.tf", "../_shared/*.tf"]
+      enabled: true
+    apply_requirements: [approved, mergeable, undiverged]
+
+  - name: identity
+    dir: terraform/03-identity
+    terraform_version: v1.16.1
+    autoplan:
+      when_modified: ["*.tf", "../_shared/*.tf"]
+      enabled: true
+    # IAM은 사람 둘이 봐야 합니다. 서버 측에서 승인자 수를 강제하세요.
+    apply_requirements: [approved, mergeable, undiverged]
+
+# ── 왜 apply_requirements 세 개를 다 쓰는가 ────────────────────────
+#
+#   approved    — 승인 없이 apply 금지
+#   mergeable   — CI 실패·충돌 상태로 apply 금지
+#   undiverged  — base 브랜치가 앞서 나갔으면 금지. 이게 빠지면
+#                 "plan은 어제 상태, apply는 오늘 상태"가 됩니다.
+#
+# 세 번째를 빠뜨린 설정이 현장에 정말 많습니다.

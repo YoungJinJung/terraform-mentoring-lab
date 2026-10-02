@@ -1,0 +1,130 @@
+# ─────────────────────────────────────────────────────────────────────
+# GitHub Actions 버전 — 같은 파이프라인을 Actions로 옮기면 이렇게 됩니다.
+# 리포 루트의 .github/workflows/ 로 복사해서 쓰세요.
+#
+# CodePipeline과 비교 포인트
+#   · 승인       → environment protection rules (아래 apply job)
+#   · 자격증명   → OIDC. 장기 키 없음 (모듈 3)
+#   · plan 전달  → actions/upload-artifact
+#   · 동시 실행  → concurrency 그룹으로 직렬화
+# ─────────────────────────────────────────────────────────────────────
+name: terraform
+
+on:
+  pull_request:
+    paths: ["terraform/**", ".github/workflows/terraform.yml"]
+  push:
+    branches: [main]
+    paths: ["terraform/**"]
+
+# 최소 권한. 기본값을 믿지 말고 리포 설정에서 Read로 내려두세요.
+permissions:
+  contents: read
+  id-token: write      # OIDC 토큰을 받기 위해 — 이게 없으면 조용히 실패합니다
+  pull-requests: write # plan을 코멘트로 달기 위해
+
+# state는 하나입니다. 동시에 두 개가 돌면 lock 경합이 납니다.
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false   # plan 중간에 끊으면 lock이 남습니다
+
+env:
+  TF_DIR: terraform/02-network
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.TF_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          # 역할 세션 이름에 PR 번호를 넣으면 CloudTrail에서 추적이 쉽습니다
+          role-session-name: gha-plan-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false   # true면 출력에 제어문자가 섞입니다
+
+      - name: fmt
+        run: terraform fmt -check -recursive
+
+      - name: init & validate
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false
+          terraform validate
+
+      - name: plan
+        id: plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform plan -input=false -lock-timeout=5m -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+          terraform show -json   tfplan > plan.json
+
+      - name: policy check
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          curl -fsSL https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz \
+            | tar xz -C /tmp conftest
+          /tmp/conftest test --policy ../04-gitops/policies plan.json
+
+      # ★ tfplan은 평문입니다. 아티팩트는 리포 접근 권한이 있는
+      #   사람이면 다 내려받을 수 있습니다. 비밀이 들어가는 구성이면
+      #   plan 파일을 올리지 말고 apply 때 다시 뜨는 쪽을 택하세요.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}
+          path: ${{ env.TF_DIR }}/tfplan
+          retention-days: 5
+
+      - name: PR 코멘트
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = fs.readFileSync(`${process.env.TF_DIR}/plan.txt`, 'utf8');
+            if (body.length > 60000) body = body.slice(0, 60000) + '\n... (잘림)';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '```terraform\n' + body + '\n```',
+            });
+
+  apply:
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # ★ 여기가 "수동 승인" 자리입니다.
+    #   Settings → Environments → production → Required reviewers
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.TF_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-apply-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: tfplan-${{ github.run_id }}
+          path: ${{ env.TF_DIR }}
+
+      - working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -lock-timeout=5m tfplan

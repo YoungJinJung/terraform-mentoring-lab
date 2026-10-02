@@ -1,0 +1,78 @@
+# 자료용 리포이므로 CI도 가볍게 갑니다.
+# apply는 하지 않습니다 — 포맷·문법·정책만 봅니다.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        # 서브모듈은 CI에서 필요 없습니다 — 클론만 느려집니다
+        with: { submodules: false }
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false
+
+      - name: fmt
+        run: terraform fmt -check -recursive -diff terraform/
+
+      - name: validate
+        run: |
+          set -eu
+          ./bootstrap.sh
+          fail=0
+          for d in terraform/[0-9][0-9]-*/; do
+            # 모듈 4는 .tf 가 없는 설정 전용 디렉터리
+            ls "$d"*.tf >/dev/null 2>&1 || { echo "skip  $d"; continue; }
+            echo "::group::$d"
+            # AWS 자격증명 없이 문법·타입만 검사합니다
+            terraform -chdir="$d" init -backend=false -input=false
+            terraform -chdir="$d" validate || fail=1
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { submodules: false }
+
+      - name: conftest 정책 자체 검사
+        run: |
+          curl -fsSL -o /tmp/conftest.tar.gz \
+            https://github.com/open-policy-agent/conftest/releases/download/v0.62.0/conftest_0.62.0_Linux_x86_64.tar.gz
+          tar xzf /tmp/conftest.tar.gz -C /tmp conftest
+          /tmp/conftest verify --policy terraform/04-gitops/policies || true
+          /tmp/conftest parse terraform/04-gitops/policies/terraform.rego >/dev/null
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { submodules: false }
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: shellcheck -S warning bootstrap.sh lab/scripts/*.sh
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { submodules: false }
+      - name: compose 파일 검증
+        working-directory: lab
+        run: |
+          cp .env.example .env
+          docker compose config -q
+          docker compose --profile gitops config -q
+          docker compose --profile cicd config -q

@@ -1,0 +1,32 @@
+[submodule "upstream/terraform-provisioning"]
+	path = upstream/terraform-provisioning
+	url = https://github.com/DevopsArtFactory/terraform-provisioning.git
+	branch = main
+[submodule "upstream/atlantis-deploy"]
+	path = upstream/atlantis-deploy
+	url = https://github.com/DevopsArtFactory/atlantis-deploy.git
+	branch = main
+[submodule "upstream/jenkins-deploy-script"]
+	path = upstream/jenkins-deploy-script
+	url = https://github.com/DevopsArtFactory/jenkins-deploy-script.git
+	branch = main
+[submodule "upstream/demoapp-deploy"]
+	path = upstream/demoapp-deploy
+	url = https://github.com/DevopsArtFactory/demoapp-deploy.git
+	branch = main
+[submodule "upstream/springboot-sample"]
+	path = upstream/springboot-sample
+	url = https://github.com/DevopsArtFactory/springboot-sample.git
+	branch = main
+[submodule "upstream/k8s-common-chart"]
+	path = upstream/k8s-common-chart
+	url = https://github.com/DevopsArtFactory/k8s-common-chart.git
+	branch = main
+[submodule "upstream/k8s-app-chart"]
+	path = upstream/k8s-app-chart
+	url = https://github.com/DevopsArtFactory/k8s-app-chart.git
+	branch = main
+[submodule "upstream/k8s-chart-value"]
+	path = upstream/k8s-chart-value
+	url = https://github.com/DevopsArtFactory/k8s-chart-value.git
+	branch = main

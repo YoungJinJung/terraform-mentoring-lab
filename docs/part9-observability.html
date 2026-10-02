@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observability를 코드로</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+
+:root{
+  --paper:#F6F4FA; --surface:#FFFFFF; --surface-2:#EFECF6;
+  --ink:#1A1722; --ink-2:#4A4458; --ink-3:#78718C;
+  --line:#DFDAEB; --line-strong:#C7BFDD;
+  --accent:#5B3FD1; --accent-soft:#EDE8FB;
+  --lab:#0E7C86; --lab-soft:#DFF1F2;
+  --warn:#A2620A; --warn-soft:#F8EDD9;
+  --code-bg:#F2EFF9; --code-ink:#2C2540; --code-cmt:#8A82A0; --code-str:#146B62; --code-kw:#7A3FB8;
+  --shadow:0 1px 2px rgba(26,23,34,.05), 0 8px 24px -16px rgba(26,23,34,.25);
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141220; --surface:#1C1929; --surface-2:#232032;
+    --ink:#F0EDF7; --ink-2:#BDB6CE; --ink-3:#8E86A3;
+    --line:#2E2A3E; --line-strong:#413B57;
+    --accent:#A896F5; --accent-soft:#272040;
+    --lab:#5FCBD3; --lab-soft:#123033;
+    --warn:#E5AE5E; --warn-soft:#33280F;
+    --code-bg:#181528; --code-ink:#DCD6EC; --code-cmt:#7E769A; --code-str:#6FCBB8; --code-kw:#C3A0F0;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141220; --surface:#1C1929; --surface-2:#232032;
+  --ink:#F0EDF7; --ink-2:#BDB6CE; --ink-3:#8E86A3;
+  --line:#2E2A3E; --line-strong:#413B57;
+  --accent:#A896F5; --accent-soft:#272040;
+  --lab:#5FCBD3; --lab-soft:#123033;
+  --warn:#E5AE5E; --warn-soft:#33280F;
+  --code-bg:#181528; --code-ink:#DCD6EC; --code-cmt:#7E769A; --code-str:#6FCBB8; --code-kw:#C3A0F0;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:.94em}
+.wrap{max-width:1000px;margin:0 auto;padding:0 28px}
+
+.topbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:52px;overflow-x:auto;scrollbar-width:thin}
+.topbar .brand{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--ink-3);white-space:nowrap}
+.navlinks{display:flex;gap:1px;margin-left:auto}
+.navlinks a{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;color:var(--ink-2);
+  text-decoration:none;padding:5px 8px;border-radius:6px;white-space:nowrap}
+.navlinks a:hover{background:var(--accent-soft);color:var(--accent)}
+.navlinks a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.hero{padding:60px 0 38px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;color:var(--accent);font-weight:600}
+h1{font-family:"Gowun Batang","Apple SD Gothic Neo",serif;font-weight:700;
+  font-size:clamp(32px,5vw,50px);line-height:1.18;margin:14px 0 0;letter-spacing:-.01em}
+.sub{max-width:62ch;margin-top:16px;color:var(--ink-2);font-size:16.5px}
+.stats{display:flex;flex-wrap:wrap;margin-top:32px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.stat{flex:1 1 140px;padding:15px 20px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat dt{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.07em;color:var(--ink-3);margin:0}
+.stat dd{margin:3px 0 0;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.stat dd small{font-size:13px;font-weight:400;color:var(--ink-3)}
+
+section{padding:52px 0;scroll-margin-top:60px}
+section+section{border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.sec-num{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--accent)}
+.sec-head h2{font-family:"Gowun Batang",serif;font-weight:700;font-size:29px;letter-spacing:-.01em}
+.sec-head .dur{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
+  border:1px solid var(--line-strong);border-radius:999px;padding:2px 10px}
+.sec-head .lvl{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.05em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 10px}
+.lede{max-width:66ch;color:var(--ink-2);margin:0 0 28px}
+
+h3.blk{font-size:17px;font-weight:600;margin:34px 0 10px;padding-left:11px;border-left:3px solid var(--accent)}
+h4.sm{font-size:14.5px;font-weight:600;margin:22px 0 6px}
+p{margin:0 0 14px;max-width:70ch}
+ul,ol{margin:0 0 14px;padding-left:20px;max-width:70ch}
+li{margin:5px 0}
+strong,b{font-weight:600}
+
+figure.code{margin:16px 0;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);overflow:hidden}
+figure.code figcaption{display:flex;align-items:center;gap:10px;padding:7px 12px;
+  border-bottom:1px solid var(--line);background:var(--surface-2);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.05em;color:var(--ink-3)}
+figure.code figcaption .cp{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  border:1px solid var(--line-strong);background:transparent;color:var(--ink-3);
+  border-radius:5px;padding:2px 8px;cursor:pointer}
+figure.code figcaption .cp:hover{color:var(--accent);border-color:var(--accent)}
+figure.code figcaption .cp:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;
+  font-size:13px;line-height:1.65;color:var(--code-ink);tab-size:2}
+code{font-family:"IBM Plex Mono",monospace}
+p code,li code,td code{background:var(--code-bg);color:var(--code-ink);padding:1px 5px;border-radius:4px;font-size:.9em}
+.c{color:var(--code-cmt)} .s{color:var(--code-str)} .k{color:var(--code-kw)}
+
+.note{border:1px solid var(--line-strong);border-left:3px solid var(--accent);background:var(--surface);
+  border-radius:0 8px 8px 0;padding:15px 20px;margin:18px 0;max-width:74ch}
+.note.warn{border-left-color:var(--warn)}
+.note.new{border-left-color:var(--lab)}
+.note h4{font-size:14.5px;font-weight:600;margin-bottom:5px}
+.note p{margin:0;font-size:14px;color:var(--ink-2)}
+.note p+p{margin-top:7px}
+.note ul{margin:7px 0 0;font-size:14px;color:var(--ink-2)}
+.note .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.05em;padding:1px 6px;border-radius:4px;margin-right:7px;vertical-align:2px;
+  background:var(--lab-soft);color:var(--lab)}
+.note.warn .badge{background:var(--warn-soft);color:var(--warn)}
+
+.lab{border:1px solid var(--lab);border-radius:var(--r);background:var(--surface);margin:24px 0;overflow:hidden}
+.lab-head{display:flex;align-items:center;gap:10px;padding:11px 20px;background:var(--lab-soft);border-bottom:1px solid var(--lab)}
+.lab-head span{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.07em;color:var(--lab)}
+.lab-head h4{font-size:15px;font-weight:600;color:var(--ink)}
+.lab-body{padding:18px 22px 6px}
+.lab-body ol{padding-left:19px}
+
+.tbl-scroll{overflow-x:auto;margin:18px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.07em;color:var(--ink-3);
+  font-weight:600;text-align:left;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+tbody td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+tbody tr:last-child td{border-bottom:0}
+tbody td:first-child{color:var(--ink);font-weight:500}
+tbody td code{white-space:nowrap}
+table.cmp tbody td:first-child{white-space:nowrap;color:var(--ink-3);font-weight:500;font-size:13px}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin:18px 0}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:18px 20px}
+.panel h4{font-size:15px;font-weight:600;margin-bottom:8px}
+.panel p:last-child,.panel ul:last-child{margin-bottom:0}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:18px 0;max-width:74ch}
+.steps li{counter-increment:s;position:relative;padding-left:38px;margin:14px 0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:6px;
+  background:var(--accent-soft);color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:12px;
+  font-weight:600;display:grid;place-items:center}
+.steps li b{display:block;color:var(--ink);font-weight:600}
+
+figure.dia{margin:22px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:18px 16px 10px;overflow-x:auto}
+figure.dia figcaption{font-size:13px;color:var(--ink-3);margin-top:10px;text-align:center}
+figure.dia svg{display:block;margin:0 auto;max-width:100%;height:auto}
+
+footer{padding:40px 0 60px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
+footer a{color:var(--ink-3)}
+footer p{margin:0 0 6px;max-width:74ch}
+
+/* ---------- interview Q&A ---------- */
+.qa{margin:18px 0;max-width:78ch}
+.qa details{border:1px solid var(--line);border-radius:8px;background:var(--surface);margin:9px 0;overflow:hidden}
+.qa details[open]{border-color:var(--line-strong)}
+.qa summary{cursor:pointer;list-style:none;padding:13px 18px 13px 46px;position:relative;
+  font-weight:600;font-size:14.8px;color:var(--ink)}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::before{content:"Q";position:absolute;left:16px;top:13px;width:20px;height:20px;border-radius:5px;
+  background:var(--accent-soft);color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:11px;
+  font-weight:600;display:grid;place-items:center}
+.qa summary:hover{background:var(--surface-2)}
+.qa summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.qa .ans{padding:2px 18px 14px 46px;border-top:1px solid var(--line);margin-top:2px}
+.qa .ans p{margin:12px 0 0;font-size:14px;color:var(--ink-2)}
+.qa .ans ul{margin:10px 0 0;font-size:14px;color:var(--ink-2)}
+.qa .ans p:first-child{margin-top:12px}
+.qa .tagline{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.05em;
+  color:var(--ink-3);margin-left:8px;font-weight:500}
+
+@media (max-width:720px){.wrap{padding:0 18px}section{padding:40px 0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <div class="wrap">
+    <span class="brand">module-09</span>
+    <span class="navlinks">
+      <a href="#s1">개념</a><a href="#s2">Datadog</a><a href="#s3">LAB1</a>
+      <a href="#s4">Sumo</a><a href="#s5">LAB2</a><a href="#s6">마무리</a><a href="#qa">면접</a><a href="#ref">부록</a>
+    </span>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">MODULE 09 · TERRAFORM MENTORING</p>
+    <h1>Observability를 코드로</h1>
+    <p class="sub">
+      SaaS 모니터링 도구까지 Terraform으로 관리해서, <b>코드 밖에 남는 수동 설정이 하나도 없는 상태</b>로 과정을 닫습니다.
+      대시보드와 알람도 리뷰 대상이 됩니다.
+    </p>
+    <dl class="stats">
+      <div class="stat"><dt>DURATION</dt><dd>2.5<small> 시간</small></dd></div>
+      <div class="stat"><dt>TOPICS</dt><dd>5<small> 개</small></dd></div>
+      <div class="stat"><dt>LAB</dt><dd>2<small> 개 실습</small></dd></div>
+      <div class="stat"><dt>면접 문항</dt><dd>12<small> 개</small></dd></div>
+    </dl>
+  </div>
+</header>
+
+<!-- 1 -->
+<section id="s1">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Observability의 기본</h2><span class="dur">20분</span><span class="lvl">LEVEL 200</span></div>
+
+    <h3 class="blk">모니터링과 Observability</h3>
+    <p><b>모니터링</b>은 "미리 정해둔 질문에 답하는 것"입니다 — CPU가 80%를 넘었는가. <b>Observability</b>는 "예상하지 못한 질문에 답할 수 있는 상태"입니다 — 왜 어제 오후 3시에 특정 고객만 느렸는가.</p>
+
+    <h3 class="blk">세 가지 신호</h3>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>신호</th><th>답하는 질문</th><th>비용 특성</th></tr></thead>
+      <tbody>
+        <tr><td><b>Metrics</b></td><td>얼마나? 언제부터? — 집계된 수치, 시계열</td><td>저렴. 카디널리티가 높아지면 급증</td></tr>
+        <tr><td><b>Logs</b></td><td>정확히 무슨 일이? — 개별 이벤트</td><td><b>가장 비쌉니다.</b> 수집량에 비례</td></tr>
+        <tr><td><b>Traces</b></td><td>어디서 느려졌나? — 요청의 전체 경로</td><td>샘플링으로 조절</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note warn">
+      <h4>Observability 비용은 인프라 비용을 넘길 수 있습니다</h4>
+      <p>실제로 흔한 일입니다. 특히 로그가 그렇습니다. 대응 전략을 처음부터 세우세요.</p>
+      <ul>
+        <li><b>로그 레벨</b> — DEBUG를 프로덕션에서 켜두지 않습니다</li>
+        <li><b>티어링</b> — 실시간 분석이 필요한 로그와 보관만 하는 로그를 분리</li>
+        <li><b>샘플링</b> — 트레이스는 전부 보내지 않습니다</li>
+        <li><b>카디널리티</b> — 태그에 user_id 같은 고유값을 넣지 않습니다. 메트릭 비용이 폭발합니다</li>
+      </ul>
+    </div>
+
+    <h3 class="blk">SLI · SLO · 알람</h3>
+    <ul>
+      <li><b>SLI</b>(Service Level Indicator) — 측정하는 지표. 예: 성공한 요청의 비율, p99 응답 시간</li>
+      <li><b>SLO</b>(Service Level Objective) — 목표치. 예: 30일간 가용성 99.9%</li>
+      <li><b>Error Budget</b> — SLO가 허용하는 실패량. 99.9%면 30일에 약 43분. <b>이 예산이 남아 있으면 배포를 계속하고, 소진되면 안정화에 집중</b>합니다</li>
+    </ul>
+    <div class="note">
+      <h4>알람은 "사람이 지금 행동해야 하는 것"만</h4>
+      <p>알람이 많으면 아무도 보지 않게 됩니다(alert fatigue). 기준은 하나 — <b>이 알람이 울렸을 때 사람이 새벽에 일어나 할 일이 있는가.</b> 없으면 대시보드에 두세요.</p>
+      <p>증상 기반(symptom-based)으로 거는 것이 원칙입니다. "CPU 80%"가 아니라 "사용자 요청의 1%가 실패 중"이 알람입니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Datadog</h2><span class="dur">40분</span><span class="lvl">LEVEL 200~300</span></div>
+
+    <h3 class="blk">무엇을 제공하나</h3>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>영역</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td>Infrastructure</td><td>호스트·컨테이너·프로세스·네트워크 I/O. Integration으로 AWS 리소스를 자동 수집하고 맵으로 표시. 클라우드 비용 모니터링도 포함</td></tr>
+        <tr><td>APM</td><td>애플리케이션에 라이브러리를 넣어 메소드 실행·응답 시간·호출 흐름 추적. <b>Database Monitoring</b>으로 슬로우 쿼리와 실행 계획까지</td></tr>
+        <tr><td>Log Management</td><td>Agent로 로그 수집. <b>로그와 트레이스를 연결</b>해 장애 시점의 로그를 바로 찾습니다. Observability Pipelines로 가공·라우팅</td></tr>
+        <tr><td>RUM · Synthetic</td><td>실사용자 모니터링(어느 국가, 어느 페이지, 세션 리플레이), 합성 테스트</td></tr>
+        <tr><td>Monitor · SLO</td><td>조건 기반 알람, 이상 징후 감지, Incident 관리, SLI/SLO 추적</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="note new">
+      <h4><span class="badge">2026.03 · 중요</span>Datadog provider v4의 breaking change <span class="lvl">300</span></h4>
+      <p>AWS 인테그레이션 관련 <b>리소스 4개가 제거되고 하나로 통합</b>됐습니다.</p>
+      <p>제거: <code>datadog_integration_aws</code>, <code>datadog_integration_aws_tag_filter</code>, <code>datadog_integration_aws_log_collection</code>, <code>datadog_integration_aws_lambda_arn</code></p>
+      <p>대체: <b><code>datadog_integration_aws_account</code></b> 하나. 기존 계정은 새 리소스로 <b>import</b>한 뒤 구버전 리소스를 state에서 제거해야 합니다.</p>
+      <p>그 외: <code>datadog_monitor</code>의 <b><code>locked</code> 속성 제거</b>(권한은 <code>datadog_restriction_policy</code>로), <code>datadog_application_key</code> <b>데이터 소스 제거</b>, Plugin Framework 전환으로 <b>Terraform CLI 1.1.5 이상</b> 필요.</p>
+      <p>인터넷의 대부분의 예제가 아직 v3 기준입니다. 이걸 알고 있으면 시간을 크게 아낍니다.</p>
+    </div>
+
+    <figure class="code"><figcaption>AWS 연동 — v4 방식<button class="cp" type="button">복사</button></figcaption><pre><code>terraform {
+  required_providers {
+    datadog = {
+      source  = <span class="s">"DataDog/datadog"</span>
+      version = <span class="s">"~&gt; 4.20"</span>
+    }
+  }
+}
+
+<span class="c"># Datadog이 우리 계정을 읽을 Role — 액세스 키가 아니라 AssumeRole</span>
+resource <span class="s">"aws_iam_role"</span> <span class="s">"datadog"</span> {
+  name = <span class="s">"DatadogIntegrationRole"</span>
+  assume_role_policy = jsonencode({
+    Version = <span class="s">"2012-10-17"</span>
+    Statement = [{
+      Effect    = <span class="s">"Allow"</span>
+      Principal = { AWS = <span class="s">"arn:aws:iam::464622532012:root"</span> }   <span class="c"># Datadog 계정</span>
+      Action    = <span class="s">"sts:AssumeRole"</span>
+      Condition = {
+        StringEquals = { <span class="s">"sts:ExternalId"</span> = var.datadog_external_id }
+      }
+    }]
+  })
+}
+
+resource <span class="s">"datadog_integration_aws_account"</span> <span class="s">"main"</span> {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  aws_partition  = <span class="s">"aws"</span>
+
+  auth_config {
+    aws_auth_config_role {
+      role_name   = aws_iam_role.datadog.name
+      external_id = var.datadog_external_id
+    }
+  }
+
+  aws_regions { include_only = [<span class="s">"ap-northeast-2"</span>] }
+
+  <span class="c"># 태그 필터로 수집 범위를 좁혀 비용을 관리합니다</span>
+  metrics_config {
+    namespace_filters {
+      include_only = [<span class="s">"AWS/ECS"</span>, <span class="s">"AWS/ApplicationELB"</span>, <span class="s">"AWS/RDS"</span>]
+    }
+  }
+
+  logs_config {
+    lambda_forwarder {
+      lambdas = [aws_lambda_function.datadog_forwarder.arn]
+      sources = [<span class="s">"s3"</span>, <span class="s">"elb"</span>]
+    }
+  }
+}</code></pre></figure>
+    <p><b>액세스 키를 주지 않습니다.</b> Datadog의 AWS 계정이 우리 Role을 AssumeRole하는 구조이고, <code>ExternalId</code>로 confused deputy를 막습니다. 모듈 3에서 배운 패턴 그대로입니다.</p>
+
+    <figure class="code"><figcaption>Monitor와 SLO<button class="cp" type="button">복사</button></figcaption><pre><code>resource <span class="s">"datadog_monitor"</span> <span class="s">"api_5xx"</span> {
+  name    = <span class="s">"[${var.environment}] API 5xx 비율 초과"</span>
+  type    = <span class="s">"query alert"</span>
+  message = &lt;&lt;-EOT
+    5xx 비율이 임계를 넘었습니다.
+    런북: https://wiki.example.com/runbook/api-5xx
+    {{#is_alert}}@slack-oncall{{/is_alert}}
+  EOT
+
+  query = <span class="s">"sum(last_5m):sum:trace.http.request.errors{service:api,env:${var.environment}}.as_count() / sum:trace.http.request.hits{service:api,env:${var.environment}}.as_count() &gt; 0.01"</span>
+
+  monitor_thresholds {
+    critical = 0.01
+    warning  = 0.005
+  }
+
+  notify_no_data    = true
+  no_data_timeframe = 10
+  renotify_interval = 30
+
+  tags = [<span class="s">"env:${var.environment}"</span>, <span class="s">"team:platform"</span>, <span class="s">"managed-by:terraform"</span>]
+}
+
+resource <span class="s">"datadog_service_level_objective"</span> <span class="s">"api_availability"</span> {
+  name        = <span class="s">"API 가용성"</span>
+  type        = <span class="s">"monitor"</span>
+  monitor_ids = [datadog_monitor.api_5xx.id]
+
+  thresholds {
+    timeframe = <span class="s">"30d"</span>
+    target    = 99.9
+    warning   = 99.95
+  }
+}</code></pre></figure>
+    <div class="note">
+      <h4>알람 메시지에 런북 링크를 넣으세요</h4>
+      <p>새벽 3시에 알람을 받은 사람이 <b>무엇을 확인하고 무엇을 해야 하는지</b>가 메시지 안에 있어야 합니다. 링크 하나가 대응 시간을 절반으로 줄입니다.</p>
+      <p><code>notify_no_data</code>도 중요합니다 — 데이터가 안 오는 것 자체가 장애 신호인데, 기본값은 알리지 않습니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Datadog 실습</h2><span class="dur">30분 · 실습</span></div>
+
+    <div class="lab">
+      <div class="lab-head"><span>LAB 01</span><h4>모니터링을 코드로</h4></div>
+      <div class="lab-body">
+        <ol>
+          <li>Datadog 트라이얼 계정을 만들고 API 키·App 키를 발급합니다. <b>이 키들을 SOPS로 암호화해 커밋</b>하세요 — 모듈 3의 패턴입니다.</li>
+          <li>Atlantis의 Task Role이 이 키를 복호화할 수 있게 하고, <code>atlantis.yaml</code> 워크플로에 Datadog provider 환경변수를 추가합니다.</li>
+          <li><code>datadog_integration_aws_account</code>로 AWS 연동을 구성합니다. <b>Role + ExternalId 방식</b>으로.</li>
+          <li><code>namespace_filters</code>로 수집 범위를 좁힙니다. 전부 켜면 메트릭 비용이 빠르게 올라갑니다.</li>
+          <li>모듈 7·8의 서비스에 Datadog Agent를 붙입니다 — ECS는 사이드카 컨테이너, EKS는 Helm 차트(DaemonSet).</li>
+          <li>APM 라이브러리를 애플리케이션에 넣고 트레이스가 들어오는지 확인합니다.</li>
+          <li>Monitor를 <b>Terraform으로</b> 만듭니다. 5xx 비율, p99 응답 시간, 그리고 <code>notify_no_data</code>를 켠 것 하나.</li>
+          <li>SLO를 만들고 error budget이 어떻게 표시되는지 봅니다.</li>
+          <li><b>PR 실험</b> — 임계값을 바꾸는 PR을 올려 Atlantis의 plan에 <b>알람 변경이 diff로 보이는지</b> 확인하세요. 이것이 이 모듈의 핵심입니다.</li>
+          <li><b>확인 질문</b> — 누군가 Datadog 콘솔에서 알람을 직접 수정하면 어떻게 되나요?</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note">
+      <h4>마지막 질문의 답</h4>
+      <p>다음 <code>terraform plan</code>이 그것을 <b>drift로 감지</b>하고 코드 상태로 되돌립니다. 이것이 모니터링을 코드로 관리하는 이유입니다 — 콘솔에서 조용히 알람을 끄는 일이 불가능해집니다.</p>
+      <p>반대로 긴급 상황에서 콘솔로 빠르게 고쳐야 할 때도 있습니다. 그럴 때는 고친 뒤 <b>반드시 코드에 반영</b>하는 규칙을 세우세요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Sumo Logic</h2><span class="dur">35분</span><span class="lvl">LEVEL 200~300</span></div>
+    <p class="lede">로그 중심 플랫폼입니다. Datadog과 겹치는 부분이 있지만 <b>로그 티어링과 SIEM</b>에서 성격이 다릅니다.</p>
+
+    <h3 class="blk">Collector 두 종류</h3>
+    <div class="grid2">
+      <div class="panel">
+        <h4>Hosted Collector</h4>
+        <p><b>에이전트 설치가 필요 없습니다.</b> API 키·IAM Role 같은 인증 정보만 설정하면 Sumo Logic이 직접 수집합니다.</p>
+        <p>AWS(CloudTrail, S3, CloudWatch)뿐 아니라 Slack·Atlassian·CrowdStrike 같은 SaaS 로그도 가져옵니다.</p>
+      </div>
+      <div class="panel">
+        <h4>Installed Collector</h4>
+        <p>호스트나 DaemonSet으로 <b>에이전트를 설치</b>합니다. 지정한 경로의 파일 로그나 컨테이너 로그를 수집합니다.</p>
+        <p>애플리케이션 로그처럼 외부에서 접근할 수 없는 것에 씁니다.</p>
+      </div>
+    </div>
+
+    <h3 class="blk">Data Tier — 로그 비용의 핵심 <span class="lvl">LEVEL 300</span></h3>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>티어</th><th>대상</th><th>기능</th></tr></thead>
+      <tbody>
+        <tr><td><b>Continuous</b></td><td>실시간 모니터링이 필요한 로그 — 애플리케이션·보안·액세스 로그</td><td>대시보드 · 모니터(알람) 지원</td></tr>
+        <tr><td><b>Frequent</b></td><td>비교적 자주 검색하는 로그 — 개발·테스트, 제품 분석</td><td><b>대시보드·알람 미지원</b>, 검색만</td></tr>
+        <tr><td><b>Infrequent</b></td><td>거의 안 보는 로그 — 디버그, OS 로그, 스레드 덤프</td><td><b>수집은 매우 저렴, 분석 시 과금</b></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note new">
+      <h4>티어링이 곧 비용 전략입니다</h4>
+      <p>단가가 티어별로 크게 다릅니다. <b>모든 로그를 Continuous에 넣으면 비용이 감당이 안 되고, 모두 Infrequent에 넣으면 장애 대응이 안 됩니다.</b></p>
+      <p>실무 접근: 알람을 걸어야 하는 것만 Continuous, 사후 조사용은 Infrequent. <b>이 분류를 코드로 관리</b>하면 "왜 이 로그가 비싼 티어에 있지"를 PR에서 논의할 수 있습니다.</p>
+    </div>
+
+    <figure class="code"><figcaption>sumologic.tf<button class="cp" type="button">복사</button></figcaption><pre><code>resource <span class="s">"sumologic_collector"</span> <span class="s">"aws"</span> {
+  name        = <span class="s">"${local.name_prefix}-aws"</span>
+  description = <span class="s">"AWS 서비스 로그"</span>
+}
+
+resource <span class="s">"sumologic_cloudwatch_source"</span> <span class="s">"app_logs"</span> {
+  name          = <span class="s">"app-logs"</span>
+  collector_id  = sumologic_collector.aws.id
+  content_type  = <span class="s">"AwsCloudWatch"</span>
+  category      = <span class="s">"aws/${var.environment}/app"</span>
+
+  authentication {
+    type     = <span class="s">"AWSRoleBasedAuthentication"</span>
+    role_arn = aws_iam_role.sumologic.arn
+  }
+
+  path {
+    type = <span class="s">"CloudWatchPath"</span>
+    limit_to_regions = [<span class="s">"ap-northeast-2"</span>]
+    tag_filters {
+      type      = <span class="s">"TagFilters"</span>
+      namespace = <span class="s">"All"</span>
+      tags      = [<span class="s">"Environment=${var.environment}"</span>]
+    }
+  }
+}
+
+<span class="c"># 로그에서 필드를 추출해 검색을 빠르게</span>
+resource <span class="s">"sumologic_field_extraction_rule"</span> <span class="s">"app"</span> {
+  name  = <span class="s">"app-fields"</span>
+  scope = <span class="s">"_sourceCategory=aws/*/app"</span>
+  parse_expression = <span class="s">"parse \"level=* trace_id=* msg=*\" as level, trace_id, msg"</span>
+  enabled = true
+}
+
+resource <span class="s">"sumologic_monitor"</span> <span class="s">"error_spike"</span> {
+  name         = <span class="s">"[${var.environment}] 에러 로그 급증"</span>
+  type         = <span class="s">"MonitorsLibraryMonitor"</span>
+  monitor_type = <span class="s">"Logs"</span>
+
+  queries {
+    row_id = <span class="s">"A"</span>
+    query  = <span class="s">"_sourceCategory=aws/${var.environment}/app level=ERROR | count"</span>
+  }
+
+  triggers {
+    threshold_type = <span class="s">"GreaterThan"</span>
+    threshold      = 50
+    time_range     = <span class="s">"-15m"</span>
+    occurrence_type = <span class="s">"ResultCount"</span>
+    trigger_type   = <span class="s">"Critical"</span>
+  }
+}</code></pre></figure>
+    <p>여기서도 인증은 <b>IAM Role 기반</b>입니다. 액세스 키를 SaaS에 주지 않는 원칙이 계속 이어집니다.</p>
+
+    <div class="lab" id="s5">
+      <div class="lab-head"><span>LAB 02</span><h4>로그 파이프라인 구성</h4></div>
+      <div class="lab-body">
+        <ol>
+          <li>Sumo Logic 트라이얼 계정을 만들고 액세스 ID·키를 SOPS로 관리합니다.</li>
+          <li>Sumo Logic이 AssumeRole할 IAM Role을 만듭니다.</li>
+          <li>Hosted Collector와 CloudWatch source를 만들어 모듈 8의 EKS 로그를 흘려보냅니다.</li>
+          <li>Field Extraction Rule로 로그에서 <code>level</code>, <code>trace_id</code>를 뽑습니다.</li>
+          <li>에러 급증 모니터를 만들고, 애플리케이션에서 <b>일부러 에러를 발생시켜</b> 알람이 오는지 확인합니다.</li>
+          <li><b>티어 실험</b> — 디버그 로그를 Infrequent로 보내는 규칙을 추가하고, 검색 시 어떻게 다른지 확인하세요.</li>
+          <li><b>확인 질문</b> — Datadog과 Sumo Logic을 둘 다 쓰면 로그를 두 번 수집하게 됩니다. 어떻게 나눌 건가요?</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note">
+      <h4>마지막 질문에 대해</h4>
+      <p>정답은 없지만 흔한 분리는 이렇습니다 — <b>APM·메트릭·실시간 알람은 Datadog, 장기 보관과 보안 로그 분석(SIEM)은 Sumo Logic.</b></p>
+      <p>둘 다 쓰는 것 자체가 비용이므로, <b>하나로 통합하는 것이 대체로 낫다</b>고 답해도 좋은 답입니다. 중요한 것은 <b>중복 수집이 비용을 두 배로 만든다는 것을 인지하는가</b>입니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2>대안과 마무리</h2><span class="dur">25분</span><span class="lvl">LEVEL 300</span></div>
+
+    <h3 class="blk">SaaS만이 답은 아닙니다</h3>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>선택지</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td>CloudWatch + Application Signals</td><td>AWS 네이티브. 별도 계약 없이 APM 수준의 서비스 맵·SLO를 제공. <b>2026년 2월부터 CloudWatch Observability EKS 애드온에서 기본 활성화</b></td></tr>
+        <tr><td>ADOT (AWS Distro for OpenTelemetry)</td><td>OTel 표준 수집기. EKS 애드온으로 설치하면 Operator가 Collector를 관리. 메트릭은 AMP, 트레이스는 X-Ray로</td></tr>
+        <tr><td>Prometheus + Grafana</td><td>오픈소스 조합. AMP(관리형 Prometheus) + AMG(관리형 Grafana)로 운영 부담을 줄일 수 있습니다</td></tr>
+        <tr><td>Datadog · New Relic · Sumo Logic</td><td>통합 SaaS. 도입이 빠르고 기능이 넓지만 <b>비용과 벤더 종속</b>이 있습니다</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note new">
+      <h4>OpenTelemetry를 계측 계층으로 두세요 <span class="badge">300</span></h4>
+      <p>애플리케이션 계측을 벤더 SDK가 아니라 <b>OTel 표준</b>으로 하면, 나중에 백엔드를 바꿔도 <b>애플리케이션 코드를 고치지 않아도 됩니다.</b> Collector 설정만 바꾸면 됩니다.</p>
+      <p>벤더 종속을 줄이는 가장 실질적인 방법이고, 면접에서 언급하면 좋은 지점입니다.</p>
+    </div>
+
+    <h3 class="blk">전체 과정 회고</h3>
+    <p>9개 모듈을 통과하며 만든 것을 정리합니다.</p>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>모듈</th><th>남은 것</th></tr></thead>
+      <tbody>
+        <tr><td>01 기초</td><td>S3 backend(네이티브 잠금), 재사용 가능한 모듈 구조</td></tr>
+        <tr><td>02 VPC · Lattice</td><td>Multi-AZ 네트워크, 서비스 단위 연결과 인가</td></tr>
+        <tr><td>03 IAM · SOPS</td><td>권한 경계, 암호화된 채 Git에 있는 시크릿</td></tr>
+        <tr><td>04 Atlantis</td><td>PR이 유일한 입구. 사람에게 AWS 권한 없음</td></tr>
+        <tr><td>05 CI/CD</td><td>커밋 SHA 태그 이미지, OIDC 인증, 재사용 파이프라인</td></tr>
+        <tr><td>06 EC2</td><td>IMDSv2, ASG, CodeDeploy Blue/Green</td></tr>
+        <tr><td>07 ECS</td><td>용량 공급자, 네이티브 Blue/Green, lifecycle hook</td></tr>
+        <tr><td>08 EKS</td><td>Access Entry, Pod Identity, Karpenter, Argo CD</td></tr>
+        <tr><td>09 Observability</td><td>알람과 대시보드까지 코드. <b>수동 설정 0</b></td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="note">
+      <h4>마지막으로 확인할 것</h4>
+      <p>이 질문에 "없다"고 답할 수 있으면 과정이 끝난 것입니다.</p>
+      <p><b>지금 이 인프라를 전부 지우고 코드만으로 다시 만들 때, 사람이 콘솔에 들어가 손으로 해야 하는 일이 무엇인가?</b></p>
+      <p>남아 있다면 그게 다음에 코드로 옮길 것입니다.</p>
+    </div>
+
+    <h3 class="blk">더 가고 싶다면</h3>
+    <ul>
+      <li><b>멀티 계정</b> — Organizations, Control Tower, SCP·RCP로 계정 팩토리 구성</li>
+      <li><b>정책 as Code</b> — OPA/conftest를 CI에 넣어 인프라 규칙을 강제</li>
+      <li><b>비용 관리</b> — Infracost로 PR에 비용 영향 표시, 태그 기반 배분</li>
+      <li><b>드리프트 감지</b> — 정기적으로 <code>plan</code>을 돌려 콘솔 변경을 잡아내기</li>
+      <li><b>모듈 테스트</b> — <code>terraform test</code>로 모듈을 라이브러리처럼 검증</li>
+      <li><b>Terraform Stacks / Terragrunt</b> — 다수 환경·컴포넌트의 오케스트레이션</li>
+    </ul>
+  </div>
+</section>
+
+<!-- QA -->
+<section id="qa">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">＋</span><h2>면접 단골 질문</h2><span class="lvl">OBSERVABILITY</span></div>
+    <div class="qa">
+
+    <details><summary>모니터링과 Observability의 차이는?<span class="tagline">200</span></summary><div class="ans">
+      <p><b>모니터링</b>은 미리 정해둔 질문에 답합니다 — "CPU가 80%를 넘었나". <b>Observability</b>는 예상하지 못한 질문에 답할 수 있는 상태입니다 — "왜 어제 오후 3시에 특정 고객만 느렸나".</p>
+      <p>실무적으로는 <b>메트릭·로그·트레이스를 연결해 임의의 질문에 답할 수 있는가</b>로 갈립니다. 트레이스에서 특정 요청을 찾고 그 시점의 로그로 바로 갈 수 있으면 Observability입니다.</p>
+    </div></details>
+
+    <details><summary>메트릭·로그·트레이스를 언제 무엇으로 보는가?<span class="tagline">200~300</span></summary><div class="ans">
+      <p><b>메트릭</b>은 "얼마나·언제부터" — 집계된 시계열. 저렴하지만 개별 요청을 알 수 없습니다.</p>
+      <p><b>로그</b>는 "정확히 무슨 일이" — 개별 이벤트. <b>가장 비쌉니다.</b></p>
+      <p><b>트레이스</b>는 "어디서 느려졌나" — 마이크로서비스 간 요청 경로.</p>
+      <p>전형적 흐름: 메트릭 알람으로 <b>인지</b> → 트레이스로 <b>범위 좁히기</b> → 로그로 <b>원인 확인</b>.</p>
+    </div></details>
+
+    <details><summary>Observability 비용을 어떻게 관리하는가?<span class="tagline">300</span></summary><div class="ans">
+      <p>네 가지 축입니다. ① <b>로그 레벨</b> — 프로덕션에서 DEBUG를 켜두지 않습니다 ② <b>티어링</b> — 실시간 분석용과 보관용을 나눕니다(Sumo Logic의 Continuous/Frequent/Infrequent) ③ <b>샘플링</b> — 트레이스를 전부 보내지 않습니다 ④ <b>카디널리티 관리</b>.</p>
+      <p>카디널리티를 강조하면 좋습니다 — <b>메트릭 태그에 user_id나 request_id 같은 고유값을 넣으면</b> 시계열 개수가 폭발해 비용이 급증합니다. 그런 값은 로그나 트레이스에 넣습니다.</p>
+      <p>현실적인 이야기: Observability 비용이 인프라 비용을 넘는 경우가 실제로 흔합니다.</p>
+    </div></details>
+
+    <details><summary>SLI·SLO·Error Budget을 설명하라<span class="tagline">300</span></summary><div class="ans">
+      <p><b>SLI</b>는 측정 지표(성공 요청 비율, p99 지연), <b>SLO</b>는 목표치(30일 가용성 99.9%), <b>Error Budget</b>은 SLO가 허용하는 실패량입니다.</p>
+      <p>99.9%면 30일에 약 <b>43분</b>의 예산이 있습니다.</p>
+      <p>운영에 쓰는 방식이 핵심입니다: <b>예산이 남아 있으면 배포 속도를 유지하고, 소진되면 기능 개발을 멈추고 안정화에 집중</b>합니다. SLO가 개발과 운영의 갈등을 데이터로 조정하는 장치라고 답하면 좋습니다.</p>
+    </div></details>
+
+    <details><summary>좋은 알람의 기준은?<span class="tagline">200~300</span></summary><div class="ans">
+      <p>기준은 하나 — <b>이 알람이 울렸을 때 사람이 지금 할 일이 있는가.</b> 없으면 대시보드에 두어야 합니다.</p>
+      <p><b>증상 기반(symptom-based)</b>으로 겁니다. "CPU 80%"가 아니라 "사용자 요청의 1%가 실패 중"입니다. 원인 기반 알람은 시스템이 바뀔 때마다 낡습니다.</p>
+      <p>실무 디테일: 알람 메시지에 <b>런북 링크</b>를 넣고, <code>notify_no_data</code>를 켭니다 — <b>데이터가 안 오는 것 자체가 장애 신호</b>인데 기본값은 알리지 않습니다.</p>
+    </div></details>
+
+    <details><summary>모니터링 설정을 왜 코드로 관리하는가?<span class="tagline">300</span></summary><div class="ans">
+      <p>세 가지입니다. ① <b>리뷰</b> — 알람 임계값 변경이 PR diff로 보입니다 ② <b>재현</b> — 새 환경에 같은 대시보드·알람을 즉시 복제합니다 ③ <b>drift 감지</b> — 누군가 콘솔에서 조용히 알람을 끄면 다음 plan에서 잡힙니다.</p>
+      <p>③이 실무에서 특히 큽니다. "알람이 시끄러워서 껐는데 아무도 몰랐다"가 장애로 이어지는 일이 자주 있습니다.</p>
+      <p>단서를 달면 좋습니다: 긴급 상황에서 콘솔로 빠르게 고칠 수는 있어야 하고, 그 뒤 <b>코드에 반영하는 규칙</b>이 필요합니다.</p>
+    </div></details>
+
+    <details><summary>SaaS 모니터링 도구에 AWS 접근 권한을 어떻게 주는가?<span class="tagline">300</span></summary><div class="ans">
+      <p><b>액세스 키를 주지 않습니다.</b> 벤더의 AWS 계정이 우리 IAM Role을 <code>AssumeRole</code>하도록 신뢰 정책을 구성하고, <b><code>ExternalId</code></b>로 confused deputy를 막습니다.</p>
+      <p>ExternalId가 없으면, 그 벤더를 쓰는 다른 고객이 우리 Role ARN을 알아내 접근을 시도할 수 있습니다. 벤더가 발급한 고유 값을 조건으로 걸어야 합니다.</p>
+      <p>모듈 3에서 배운 크로스 계정 패턴과 정확히 같습니다.</p>
+    </div></details>
+
+    <details><summary>Datadog Terraform provider v4에서 무엇이 바뀌었나?<span class="tagline">300 · 최신</span></summary><div class="ans">
+      <p>AWS 인테그레이션 리소스 <b>4개가 제거되고 <code>datadog_integration_aws_account</code> 하나로 통합</b>됐습니다(2026년 3월).</p>
+      <p>제거: <code>datadog_integration_aws</code>, <code>_tag_filter</code>, <code>_log_collection</code>, <code>_lambda_arn</code>. 기존 계정은 새 리소스로 <b>import</b>한 뒤 구버전을 state에서 제거해야 합니다.</p>
+      <p>그 외: <code>datadog_monitor</code>의 <code>locked</code> 제거(권한은 <code>datadog_restriction_policy</code>로), <code>datadog_application_key</code> 데이터 소스 제거, Terraform CLI 1.1.5 이상 필요.</p>
+      <p>인터넷 예제 대부분이 아직 v3 기준이라는 점을 알고 있으면 실무에서 시간을 아낍니다.</p>
+    </div></details>
+
+    <details><summary>Sumo Logic의 Data Tier를 설명하라<span class="tagline">300</span></summary><div class="ans">
+      <p>세 티어입니다. <b>Continuous</b>(실시간 모니터링 대상 — 대시보드·알람 지원), <b>Frequent</b>(자주 검색하지만 알람은 불필요 — 대시보드·알람 미지원), <b>Infrequent</b>(거의 안 보는 로그 — 수집은 매우 저렴하고 분석 시 과금).</p>
+      <p>핵심은 <b>이것이 곧 비용 전략</b>이라는 점입니다. 전부 Continuous면 비용을 감당할 수 없고, 전부 Infrequent면 장애 대응이 안 됩니다.</p>
+      <p>실무: 알람을 걸 것만 Continuous, 사후 조사용은 Infrequent. 이 분류를 코드로 관리하면 PR에서 논의할 수 있습니다.</p>
+    </div></details>
+
+    <details><summary>OpenTelemetry를 쓰는 이유는?<span class="tagline">300</span></summary><div class="ans">
+      <p><b>벤더 종속을 계측 계층에서 끊기 위해서</b>입니다. 애플리케이션을 벤더 SDK가 아니라 OTel 표준으로 계측하면, 나중에 백엔드를 Datadog에서 다른 것으로 바꿔도 <b>애플리케이션 코드를 고치지 않습니다</b> — Collector 설정만 바꿉니다.</p>
+      <p>AWS 맥락에서는 <b>ADOT</b>(AWS Distro for OpenTelemetry)가 EKS 애드온으로 제공되고, Operator가 Collector를 CRD로 관리합니다. 메트릭은 AMP, 트레이스는 X-Ray로 보냅니다.</p>
+    </div></details>
+
+    <details><summary>CloudWatch만으로 충분한 경우는?<span class="tagline">200~300</span></summary><div class="ans">
+      <p>AWS만 쓰고 서비스 수가 많지 않다면 충분한 경우가 많습니다. <b>Application Signals</b>가 서비스 맵·SLO·APM 수준의 기능을 제공하고, 2026년 2월부터 CloudWatch Observability EKS 애드온에서 <b>기본 활성화</b>됩니다.</p>
+      <p>SaaS로 가는 이유는 대개 <b>멀티 클라우드·온프레미스 통합</b>, <b>더 나은 UI와 상관관계 분석</b>, <b>RUM·Synthetic 같은 프런트엔드 영역</b>입니다.</p>
+      <p>비용 비교를 언급하면 좋습니다 — CloudWatch도 커스텀 메트릭과 로그 수집량이 늘면 결코 싸지 않습니다.</p>
+    </div></details>
+
+    <details><summary>인프라를 코드로 관리한다고 할 때, 어디까지가 "전부"인가?<span class="tagline">300</span></summary><div class="ans">
+      <p>판단 기준은 하나입니다 — <b>지금 이 환경을 전부 지우고 코드만으로 재현할 때, 사람이 콘솔에 들어가 손으로 해야 하는 일이 있는가.</b></p>
+      <p>흔히 빠지는 것들: <b>모니터링 알람·대시보드</b>, GitHub 리포 설정과 브랜치 보호, SaaS 연동, DNS 레코드, 온콜 스케줄, 시크릿 값 자체.</p>
+      <p>현실적인 단서: 100%는 목표가 아니라 방향입니다. 남은 것을 <b>명시적으로 문서화</b>해 두는 것까지가 실무입니다.</p>
+    </div></details>
+
+    </div>
+  </div>
+</section>
+
+<!-- 부록 -->
+<section id="ref">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">＋</span><h2>부록</h2></div>
+
+    <h3 class="blk">자주 만나는 문제</h3>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>증상</th><th>원인과 해결</th></tr></thead>
+      <tbody>
+        <tr><td>Datadog provider v4로 올렸더니 리소스 없음 에러</td><td>AWS 인테그레이션 리소스 4개가 제거됨. <code>datadog_integration_aws_account</code>로 import 후 구버전 state 제거</td></tr>
+        <tr><td>AWS 메트릭이 안 들어옴</td><td>Role 신뢰 정책의 <code>ExternalId</code> 불일치, 또는 <code>namespace_filters</code>가 너무 좁음</td></tr>
+        <tr><td>메트릭 비용이 갑자기 폭증</td><td>태그 카디널리티. user_id·request_id 같은 고유값이 태그에 들어갔는지 확인</td></tr>
+        <tr><td>알람이 안 울림</td><td><code>notify_no_data</code>가 꺼져 있거나, 쿼리가 데이터를 못 찾는 중</td></tr>
+        <tr><td>알람이 너무 많이 울림</td><td>원인 기반 알람이 많음. 증상 기반으로 재설계하고 나머지는 대시보드로</td></tr>
+        <tr><td>콘솔 수정이 계속 되돌아감</td><td>정상 동작입니다. 코드에 반영하세요</td></tr>
+        <tr><td>Sumo Logic 로그가 검색이 안 됨</td><td>티어 확인 — Infrequent는 분석 시 별도 과금이며 대시보드·알람을 지원하지 않음</td></tr>
+        <tr><td>EKS에서 로그가 두 번 수집됨</td><td>Datadog Agent와 Sumo Logic Collector가 같은 경로를 봄. 하나로 정리하세요</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="blk">최종 체크리스트</h3>
+    <ul>
+      <li>메트릭·로그·트레이스를 언제 무엇으로 보는지 안다</li>
+      <li>카디널리티가 왜 비용을 폭발시키는지 설명할 수 있다</li>
+      <li>SLO와 Error Budget을 운영에 쓰는 방법을 안다</li>
+      <li>좋은 알람의 기준(증상 기반, 런북, no-data)을 안다</li>
+      <li>SaaS에 액세스 키 대신 Role + ExternalId를 준다</li>
+      <li>알람을 Terraform으로 만들고 PR에서 diff로 확인해 봤다</li>
+      <li>콘솔에서 알람을 고쳤을 때 drift가 잡히는 것을 봤다</li>
+      <li><b>이 인프라를 지우고 코드만으로 재현할 때 손으로 할 일이 무엇인지 말할 수 있다</b></li>
+    </ul>
+
+    <h3 class="blk">참고 링크</h3>
+    <ul>
+      <li><a href="https://github.com/DataDog/terraform-provider-datadog/blob/master/docs/guides/v4-upgrade-guide.md">Datadog provider v4 업그레이드 가이드</a></li>
+      <li><a href="https://registry.terraform.io/providers/DataDog/datadog/latest/docs">Datadog provider 문서</a></li>
+      <li><a href="https://registry.terraform.io/providers/SumoLogic/sumologic/latest/docs">Sumo Logic provider 문서</a></li>
+      <li><a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Signals-supportmatrix.html">CloudWatch Application Signals 지원 범위</a></li>
+      <li><a href="https://aws-otel.github.io/docs/getting-started/adot-eks-add-on/">ADOT EKS 애드온</a></li>
+      <li><a href="https://sre.google/workbook/implementing-slos/">Google SRE Workbook — SLO 구현</a></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Terraform 멘토링 모듈 9 · 총 2.5시간. Datadog provider 4.x, Sumo Logic provider 3.x 기준입니다.</p>
+    <p>전체 9개 모듈 · 30.5시간 과정의 마지막입니다. 수고하셨습니다.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.querySelectorAll('figure.code .cp').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var code = btn.closest('figure').querySelector('code');
+      var text = code ? code.innerText : '';
+      var done = function(){
+        var old = btn.textContent;
+        btn.textContent = '복사됨';
+        setTimeout(function(){ btn.textContent = old; }, 1400);
+      };
+      function fallback(){
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly','');
+          ta.style.position='fixed'; ta.style.left='-9999px';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta); done();
+        } catch(err){
+          btn.textContent = '복사 실패';
+          setTimeout(function(){ btn.textContent = '복사'; }, 1400);
+        }
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else { fallback(); }
+      } catch(e){ fallback(); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,108 @@
+# ─────────────────────────────────────────────────────────────────────
+# Datadog provider v4 — 바뀐 부분
+#
+# v3까지는 AWS 연동이 리소스 여러 개로 나뉘어 있었습니다.
+#   datadog_integration_aws
+#   datadog_integration_aws_tag_filter
+#   datadog_integration_aws_lambda_arn
+#   datadog_integration_aws_log_collection
+#
+# v4에서 datadog_integration_aws_account 하나로 합쳐졌습니다.
+# 오래된 코드를 올리면 리소스가 아예 없다고 나옵니다.
+#
+# 쓰려면 이 파일 이름에서 .example 을 떼세요.
+# ─────────────────────────────────────────────────────────────────────
+
+terraform {
+  required_providers {
+    datadog = {
+      source  = "DataDog/datadog"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "datadog" {
+  # ★ 키를 변수나 tfvars에 넣지 마세요 — state에 남습니다.
+  #   환경 변수 DD_API_KEY / DD_APP_KEY 를 쓰세요.
+  api_url = "https://api.datadoghq.com/"
+}
+
+resource "datadog_integration_aws_account" "main" {
+  aws_account_id = data.aws_caller_identity.current.account_id
+  aws_partition  = "aws"
+
+  account_tags = ["env:${var.environment}", "project:${var.project}"]
+
+  auth_config {
+    aws_auth_config_role {
+      role_name = "DatadogIntegrationRole"
+    }
+  }
+
+  aws_regions {
+    include_only = [var.region] # 전 리전을 켜면 비용이 폭증합니다
+  }
+
+  logs_config {
+    lambda_forwarder {
+      lambdas = []
+      sources = ["s3", "elb", "cloudfront"]
+    }
+  }
+
+  metrics_config {
+    enabled = true
+
+    # ★ 비용 통제의 핵심. 태그 필터를 안 걸면
+    #   계정의 모든 리소스 지표를 수집합니다.
+    namespace_filters {
+      include_only = ["AWS/EC2", "AWS/ELB", "AWS/ApplicationELB", "AWS/ECS", "AWS/RDS"]
+    }
+
+    tag_filters {
+      namespace = "AWS/EC2"
+      tags      = ["env:${var.environment}"]
+    }
+  }
+
+  resources_config {
+    cloud_security_posture_management_collection = false
+    extended_collection                          = false
+  }
+
+  traces_config {
+    xray_services {
+      include_only = []
+    }
+  }
+}
+
+resource "datadog_monitor" "error_rate" {
+  name    = "[${var.environment}] 에러율 상승"
+  type    = "metric alert"
+  message = <<-EOT
+    에러율이 임계값을 넘었습니다.
+
+    대시보드: https://app.datadoghq.com/dashboard/xxx
+    런북: https://wiki.internal/runbook/error-rate
+
+    @slack-alerts
+  EOT
+
+  query = "sum(last_5m):sum:aws.applicationelb.httpcode_target_5xx{env:${var.environment}}.as_count() > 50"
+
+  monitor_thresholds {
+    critical = 50
+    warning  = 20
+  }
+
+  # 데이터가 없을 때 알릴지. CloudWatch의 treat_missing_data와 같은 고민입니다.
+  notify_no_data    = true
+  no_data_timeframe = 20
+
+  # ★ 재알림. 이게 없으면 한 번 알리고 조용해집니다.
+  renotify_interval = 60
+
+  tags = ["env:${var.environment}", "team:platform"]
+}

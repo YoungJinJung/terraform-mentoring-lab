@@ -1,0 +1,17 @@
+# 모듈 5 — Jenkins 설정을 코드로.
+# 컨테이너를 지웠다 다시 띄워도 이 파일만 있으면 복원됩니다.
+jenkins:
+  systemMessage: "Terraform 멘토링 실습 — JCasC로 관리됨"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+unclassified:
+  location:
+    url: http://localhost:8080/

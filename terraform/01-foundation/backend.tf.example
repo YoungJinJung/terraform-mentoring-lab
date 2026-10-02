@@ -1,0 +1,27 @@
+# LAB 02 — 이 파일을 backend.tf로 복사한 뒤
+#   terraform init -migrate-state
+#
+# use_lockfile은 Terraform 1.11+의 S3 네이티브 잠금입니다.
+# DynamoDB 테이블이 필요 없습니다 — dynamodb_table은 deprecated.
+#
+# ★ Floci에서 되는지 먼저 확인하세요: make smoke M=01
+#   "S3 조건부 쓰기" 항목이 ❌면 이 설정은 로컬에서 동작하지 않습니다.
+
+terraform {
+  backend "s3" {
+    bucket       = "tfm-dev-tfstate-ap-northeast-2"
+    key          = "01-foundation/terraform.tfstate"
+    region       = "ap-northeast-2"
+    encrypt      = true
+    use_lockfile = true
+
+    # Floci를 쓸 때만 — 실제 AWS로 갈 때는 지우세요
+    endpoints                   = { s3 = "http://localhost:4566" }
+    access_key                  = "test"
+    secret_key                  = "test"
+    skip_credentials_validation = true
+    skip_requesting_account_id  = true
+    skip_region_validation      = true
+    use_path_style              = true
+  }
+}

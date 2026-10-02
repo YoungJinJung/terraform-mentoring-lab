@@ -1,0 +1,119 @@
+// ─────────────────────────────────────────────────────────────────────
+// Jenkins 버전. 랩에서는 `make cicd`로 뜬 Jenkins(:8080)에 붙입니다.
+//
+// Jenkins LTS 2.568.x 이상은 Java 21 또는 25가 필요합니다.
+// 랩 이미지는 jenkins/jenkins:lts-jdk21 입니다.
+//
+// CodePipeline / Actions와 비교 포인트
+//   · 승인      → input 스텝 (사람이 직접)
+//   · 자격증명  → 랩에서는 더미. 실제로는 IRSA / 인스턴스 역할 / Vault
+//   · plan 전달 → stash / unstash
+//   · 동시 실행 → lock() (Lockable Resources 플러그인)
+// ─────────────────────────────────────────────────────────────────────
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+    disableConcurrentBuilds()   // state가 하나이므로
+  }
+
+  parameters {
+    string(name: 'TF_DIR', defaultValue: 'terraform/02-network', description: 'plan/apply 대상')
+    booleanParam(name: 'DESTROY', defaultValue: false, description: '체크하면 destroy plan')
+  }
+
+  environment {
+    TF_VERSION         = '1.16.1'
+    TF_IN_AUTOMATION   = 'true'   // 출력에서 "다음에 뭘 하세요" 안내문을 빼줍니다
+    TF_INPUT           = 'false'
+    AWS_ENDPOINT_URL   = 'http://floci:4566'
+    AWS_ACCESS_KEY_ID  = 'test'
+    AWS_SECRET_ACCESS_KEY = 'test'
+    AWS_DEFAULT_REGION = 'ap-northeast-2'
+  }
+
+  stages {
+    stage('setup') {
+      steps {
+        sh '''
+          set -eu
+          test -x "$HOME/bin/terraform" && exit 0
+          mkdir -p "$HOME/bin"
+          curl -fsSL -o /tmp/tf.zip \
+            "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+          unzip -o -q /tmp/tf.zip -d "$HOME/bin"
+        '''
+      }
+    }
+
+    stage('fmt & validate') {
+      steps {
+        sh '''
+          set -eu
+          export PATH="$HOME/bin:$PATH"
+          terraform fmt -check -recursive
+          cd "${TF_DIR}"
+          terraform init
+          terraform validate
+        '''
+      }
+    }
+
+    stage('plan') {
+      steps {
+        sh '''
+          set -eu
+          export PATH="$HOME/bin:$PATH"
+          cd "${TF_DIR}"
+          FLAG=""
+          [ "${DESTROY}" = "true" ] && FLAG="-destroy"
+          terraform plan ${FLAG} -lock-timeout=5m -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+        '''
+        archiveArtifacts artifacts: "${params.TF_DIR}/plan.txt", fingerprint: true
+        stash name: 'tfplan', includes: "${params.TF_DIR}/tfplan"
+      }
+    }
+
+    stage('approve') {
+      // main이 아니면 승인 자체를 묻지 않습니다
+      when { branch 'main' }
+      steps {
+        script {
+          def summary = readFile("${params.TF_DIR}/plan.txt")
+          // 너무 길면 Jenkins UI가 버벅입니다
+          def tail = summary.length() > 4000 ? summary[-4000..-1] : summary
+          timeout(time: 30, unit: 'MINUTES') {
+            input message: "적용할까요?\n\n${tail}", ok: 'apply'
+          }
+        }
+      }
+    }
+
+    stage('apply') {
+      when { branch 'main' }
+      steps {
+        unstash 'tfplan'
+        // 여러 잡이 같은 state를 건드리지 않게
+        lock(resource: "tfstate-${params.TF_DIR}") {
+          sh '''
+            set -eu
+            export PATH="$HOME/bin:$PATH"
+            cd "${TF_DIR}"
+            terraform init
+            terraform apply -lock-timeout=5m tfplan
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      // tfplan 평문이 워크스페이스에 남지 않게
+      sh 'find . -name tfplan -delete || true'
+    }
+  }
+}

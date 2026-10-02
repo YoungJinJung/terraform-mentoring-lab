@@ -1,0 +1,122 @@
+# Terraform 멘토링 실습 환경
+#
+#   docker compose up -d                  # Floci + 콘솔만
+#   docker compose --profile cicd up -d   # + Jenkins
+#   docker compose --profile gitops up -d # + Atlantis + Gitea
+#
+# 모든 포트는 127.0.0.1에만 바인딩합니다. 콘솔에 인증이 없으므로
+# 0.0.0.0으로 열지 마세요.
+
+services:
+  # ─────────────────────────────────────────────────────────────
+  # 로컬 AWS 에뮬레이터
+  # ─────────────────────────────────────────────────────────────
+  floci:
+    image: floci/floci:${FLOCI_TAG:-latest}
+    container_name: tfm-floci
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      FLOCI_STORAGE_MODE: ${FLOCI_STORAGE_MODE:-hybrid}  # memory | persistent | hybrid | wal
+      AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
+      QUARKUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      # Lambda·RDS·ECS·EKS 등은 실제 Docker 컨테이너로 뜹니다.
+      # 그래서 소켓 마운트가 필요하고, 그만큼 권한이 셉니다.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_floci/health || curl -sf http://localhost:4566/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # ─────────────────────────────────────────────────────────────
+  # AWS 콘솔 스타일 웹 UI
+  # ─────────────────────────────────────────────────────────────
+  floci-ui:
+    image: flociio/floci-ui:${FLOCI_UI_TAG:-latest}
+    container_name: tfm-floci-ui
+    ports:
+      - "127.0.0.1:4500:4500"
+      - "127.0.0.1:4501:4501"
+    environment:
+      AWS_ENDPOINT: http://floci:4566
+    depends_on:
+      floci:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────
+  # 모듈 4 — PR 기반 인프라 운영
+  # ─────────────────────────────────────────────────────────────
+  gitea:
+    image: gitea/gitea:1-rootless
+    container_name: tfm-gitea
+    profiles: ["gitops"]
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GITEA__server__ROOT_URL: http://localhost:3000/
+      GITEA__webhook__ALLOWED_HOST_LIST: "*"   # 로컬 Atlantis로 웹훅을 보내기 위해
+    volumes:
+      - gitea-data:/var/lib/gitea
+
+  atlantis:
+    image: ghcr.io/runatlantis/atlantis:${ATLANTIS_TAG:-v0.47.1}
+    container_name: tfm-atlantis
+    profiles: ["gitops"]
+    ports:
+      - "127.0.0.1:4141:4141"
+    environment:
+      ATLANTIS_ATLANTIS_URL: http://localhost:4141
+      ATLANTIS_REPO_ALLOWLIST: ${ATLANTIS_REPO_ALLOWLIST:-localhost/*}
+      ATLANTIS_GH_USER: ${GH_USER:-}
+      ATLANTIS_GH_TOKEN: ${GH_TOKEN:-}
+      ATLANTIS_GH_WEBHOOK_SECRET: ${GH_WEBHOOK_SECRET:-}
+      ATLANTIS_GITEA_USER: ${GITEA_USER:-}
+      ATLANTIS_GITEA_TOKEN: ${GITEA_TOKEN:-}
+      ATLANTIS_GITEA_BASE_URL: http://gitea:3000
+      ATLANTIS_WRITE_GIT_CREDS: "true"
+      ATLANTIS_REPO_CONFIG: /etc/atlantis/repos.yaml
+      # Floci를 바라보게
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
+    volumes:
+      - atlantis-data:/atlantis           # plan 파일 영속 — 빼면 apply가 실패합니다
+      - ./atlantis/repos.yaml:/etc/atlantis/repos.yaml:ro
+    depends_on:
+      floci:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────
+  # 모듈 5 — CI/CD
+  # ─────────────────────────────────────────────────────────────
+  jenkins:
+    image: jenkins/jenkins:${JENKINS_TAG:-lts-jdk21}
+    container_name: tfm-jenkins
+    profiles: ["cicd"]
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc/jenkins.yaml
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_home/casc:ro
+    depends_on:
+      floci:
+        condition: service_healthy
+
+volumes:
+  floci-data:
+  floci-ui-data:
+  gitea-data:
+  atlantis-data:
+  jenkins-data:

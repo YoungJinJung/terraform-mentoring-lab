@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terraform 멘토링 진행 설계도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#F6F4FA;
+  --surface:#FFFFFF;
+  --surface-2:#EFECF6;
+  --ink:#1A1722;
+  --ink-2:#4A4458;
+  --ink-3:#78718C;
+  --line:#DFDAEB;
+  --line-strong:#C7BFDD;
+  --accent:#5B3FD1;
+  --accent-soft:#EDE8FB;
+  --lab:#0E7C86;
+  --lab-soft:#DFF1F2;
+  --warn:#A2620A;
+  --warn-soft:#F8EDD9;
+  --shadow:0 1px 2px rgba(26,23,34,.05), 0 8px 24px -16px rgba(26,23,34,.25);
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141220;
+    --surface:#1C1929;
+    --surface-2:#232032;
+    --ink:#F0EDF7;
+    --ink-2:#BDB6CE;
+    --ink-3:#8E86A3;
+    --line:#2E2A3E;
+    --line-strong:#413B57;
+    --accent:#A896F5;
+    --accent-soft:#272040;
+    --lab:#5FCBD3;
+    --lab-soft:#123033;
+    --warn:#E5AE5E;
+    --warn-soft:#33280F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141220;
+  --surface:#1C1929;
+  --surface-2:#232032;
+  --ink:#F0EDF7;
+  --ink-2:#BDB6CE;
+  --ink-3:#8E86A3;
+  --line:#2E2A3E;
+  --line-strong:#413B57;
+  --accent:#A896F5;
+  --accent-soft:#272040;
+  --lab:#5FCBD3;
+  --lab-soft:#123033;
+  --warn:#E5AE5E;
+  --warn-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:15.5px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent)}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:52px;overflow-x:auto;scrollbar-width:thin}
+.topbar .brand{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--ink-3);white-space:nowrap}
+.navlinks{display:flex;gap:2px;margin-left:auto}
+.navlinks a{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;
+  color:var(--ink-2);text-decoration:none;padding:5px 9px;border-radius:6px;white-space:nowrap;
+}
+.navlinks a:hover{background:var(--accent-soft);color:var(--accent)}
+.navlinks a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- hero ---------- */
+header.hero{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;
+  color:var(--accent);font-weight:600;
+}
+h1{
+  font-family:"Gowun Batang","Apple SD Gothic Neo",serif;
+  font-weight:700;font-size:clamp(34px,5.4vw,54px);line-height:1.18;
+  margin:14px 0 0;letter-spacing:-.01em;
+}
+.sub{max-width:63ch;margin-top:16px;color:var(--ink-2);font-size:16.5px}
+.stats{display:flex;flex-wrap:wrap;gap:0;margin-top:34px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.stat{flex:1 1 150px;padding:16px 20px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat dt{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.07em;color:var(--ink-3);margin:0}
+.stat dd{margin:4px 0 0;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat dd small{font-size:13px;font-weight:400;color:var(--ink-3)}
+
+/* ---------- sections ---------- */
+section{padding:56px 0}
+section + section{border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sec-head h2{
+  font-family:"Gowun Batang",serif;font-weight:700;font-size:28px;letter-spacing:-.01em;
+}
+.sec-head .tag{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);letter-spacing:.06em}
+.lede{max-width:66ch;color:var(--ink-2);margin:0 0 30px}
+
+/* ---------- callout ---------- */
+.callout{
+  border:1px solid var(--line-strong);border-left:3px solid var(--accent);
+  background:var(--surface);border-radius:0 var(--r) var(--r) 0;
+  padding:18px 22px;margin:0 0 22px;
+}
+.callout.warn{border-left-color:var(--warn)}
+.callout h4{font-size:15px;font-weight:600;margin-bottom:6px}
+.callout p{margin:0;color:var(--ink-2);font-size:14.5px}
+.callout p + p{margin-top:8px}
+
+/* ---------- flow strip ---------- */
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:34px}
+.flow span{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  padding:5px 13px;color:var(--ink-2);
+}
+.flow span.moved{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+
+/* ---------- module ---------- */
+.module{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  margin-bottom:20px;box-shadow:var(--shadow);overflow:hidden;
+}
+.mod-head{
+  display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;
+  padding:24px 26px 20px;border-bottom:1px solid var(--line);
+}
+.mod-sig{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);margin-bottom:8px}
+.mod-sig b{color:var(--accent);font-weight:600}
+.mod-head h3{font-family:"Gowun Batang",serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.mod-goal{margin:10px 0 0;color:var(--ink-2);font-size:14.5px;max-width:60ch}
+.mod-dur{text-align:right;white-space:nowrap}
+.mod-dur .h{font-family:"IBM Plex Mono",monospace;font-size:27px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.mod-dur .l{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.07em;color:var(--ink-3);display:block;margin-top:5px}
+
+.tbl-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:600px}
+thead th{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;
+  color:var(--ink-3);font-weight:600;text-align:left;
+  padding:11px 26px;border-bottom:1px solid var(--line);background:var(--surface-2);
+}
+thead th:last-child,tbody td:last-child{text-align:right}
+tbody td{padding:12px 26px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+tbody tr:last-child td{border-bottom:0}
+tbody td:first-child{color:var(--ink);font-weight:500;width:27%}
+tbody td.min{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;color:var(--ink-3);width:64px;white-space:nowrap}
+td .src{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);display:block;margin-top:3px}
+td ul{margin:4px 0 0;padding-left:17px}
+td li{margin:1px 0}
+
+.pill{
+  display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.06em;padding:2px 7px;border-radius:4px;vertical-align:1px;
+}
+.pill.lab{background:var(--lab-soft);color:var(--lab)}
+.pill.gap{background:var(--warn-soft);color:var(--warn)}
+
+.mod-foot{padding:14px 26px;background:var(--surface-2);font-size:13.5px;color:var(--ink-2);border-top:1px solid var(--line)}
+.mod-link{display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;letter-spacing:.03em;
+  color:var(--accent);background:var(--accent-soft);border:1px solid transparent;
+  padding:5px 11px;border-radius:6px;text-decoration:none;white-space:nowrap}
+.mod-link:hover{border-color:var(--accent)}
+.mod-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mod-foot b{color:var(--ink);font-weight:600}
+
+/* ---------- allocation chart ---------- */
+.alloc{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:22px 26px}
+.alloc-row{display:grid;grid-template-columns:158px 1fr 62px;align-items:center;gap:14px;padding:5px 0}
+.alloc-row .nm{font-size:13.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alloc-row .val{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:14px;background:var(--surface-2);border-radius:3px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar i.theory{background:var(--accent)}
+.bar i.lab{background:var(--lab)}
+.legend{display:flex;gap:18px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:0}
+.legend i.theory{background:var(--accent)}
+.legend i.lab{background:var(--lab)}
+.axis{display:grid;grid-template-columns:158px 1fr 62px;gap:14px;margin-top:10px}
+.axis .ticks{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-3)}
+
+/* ---------- two col ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:22px 24px}
+.panel h4{font-size:15.5px;font-weight:600;margin-bottom:10px}
+.panel p{margin:0 0 10px;color:var(--ink-2);font-size:14px}
+.panel ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:14px}
+.panel li{margin:5px 0}
+.panel li b{color:var(--ink);font-weight:600}
+
+footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
+footer p{margin:0 0 6px;max-width:70ch}
+
+@media (max-width:720px){
+  .wrap{padding:0 18px}
+  .mod-head{grid-template-columns:1fr}
+  .mod-dur{text-align:left}
+  .alloc-row,.axis{grid-template-columns:104px 1fr 54px;gap:9px}
+  thead th,tbody td{padding-left:18px;padding-right:18px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<nav class="topbar">
+  <div class="wrap">
+    <span class="brand">terraform-course.hcl</span>
+    <span class="navlinks">
+      <a href="#modules">모듈</a>
+      <a href="#alloc">시간</a>
+      <a href="#tracks">운영</a>
+      <a href="question-bank.html">문제은행</a>
+    </span>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">MENTORING PLAN · 2026</p>
+    <h1>Terraform 멘토링 진행 설계도</h1>
+    <p class="sub">
+      패스트캠퍼스 <span class="mono">Terraform Masterclass</span> 커리큘럼(9 파트·70여 클립·약 20시간)과
+      실습 자료를 바탕으로 구성한 9개 모듈짜리 멘토링 진행 계획입니다.
+      각 모듈 제목 아래의 링크로 해당 강의 자료가 바로 열립니다 — 같은 폴더에 함께 두고 쓰세요.
+    </p>
+    <dl class="stats">
+      <div class="stat"><dt>MODULES</dt><dd>9<small> 개</small></dd></div>
+      <div class="stat"><dt>TOTAL</dt><dd>30.5<small> 시간</small></dd></div>
+      <div class="stat"><dt>THEORY / LAB</dt><dd>16.5 <small>/ 14.0h</small></dd></div>
+      <div class="stat"><dt>SESSIONS</dt><dd>10<small> 회 (주 1회)</small></dd></div>
+      <div class="stat"><dt>자료</dt><dd>9<small> 개 + 문제은행</small></dd></div>
+      
+    </dl>
+  </div>
+</header>
+
+<section id="modules">
+  <div class="wrap">
+    <div class="sec-head"><h2>모듈별 구성</h2><span class="tag">9 MODULES · 30.5h</span></div>
+    <p class="lede">
+      각 표의 <span class="pill lab">LAB</span>은 직접 손으로 만드는 실습 구간입니다.
+      모듈은 앞에서 만든 것을 뒤에서 그대로 쓰는 구조라, 건너뛰면 뒤가 막힙니다.
+    </p>
+
+    <div class="callout">
+      <h4>실행 방식이 모듈 4에서 한 번 바뀝니다</h4>
+      <p>모듈 1~3의 실습은 <span class="mono">로컬 terraform apply</span> + S3/DynamoDB 원격 상태로 진행합니다.</p>
+      <p>모듈 4에서 Atlantis를 세운 뒤에는 <b>모듈 2~3에서 만든 VPC·IAM 코드를 PR로 다시 올려 <span class="mono">atlantis plan / apply</span>로 재현</b>합니다. 같은 코드가 로컬에서 돌 때와 PR에서 돌 때 무엇이 달라지는지가 이 멘토링의 중심입니다. 모듈 5부터는 전부 PR 기반입니다.</p>
+    </div>
+
+    <!-- M1 -->
+    <article class="module" id="m1">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"foundation"</b> { depends_on = [] }</p>
+          <h3>01 — Terraform 기초</h3>
+          <a class="mod-link" href="part1-terraform-basics.html">강의 자료 열기 →</a>
+          <p class="mod-goal">왜 IaC인지 납득시키고, HCL로 리소스 하나를 스스로 만들고 상태를 이해한 채로 다음 모듈에 들어가게 합니다. 여기서 <span class="mono">state</span>를 대충 넘어가면 모듈 4의 Atlantis가 통째로 흔들립니다.</p>
+        </div>
+        <div class="mod-dur"><span class="h">4.5h</span><span class="l">1.25 THEORY / 3.25 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>오리엔테이션</td>
+              <td>커리큘럼 흐름 4단계(개념 → AWS 인프라 → CI/CD → SaaS IaC), 파트별 학습 목표, 실습 방식 3단계(목표 제시 → 이론·아키텍처 → 실습), 학습 방향 4가지</td><td class="min">20</td></tr>
+          <tr><td>DevOps와 IaC</td>
+              <td>DevOps 5가지 철학(문화·자동화·측정·공유·축적), CI/CD 파이프라인 상 IaC의 위치, 선언형 vs 명령형 접근, IaC 도구 비교, IaC가 필요한 이유 4가지(일관성·신속성·확장성·투명성)</td><td class="min">25</td></tr>
+          <tr><td>Terraform과 TACOS</td>
+              <td>HCL·라이선스 변경(BSL) 이슈, 동작 방식, 사용 이유 5가지, GitOps와 Terraform, TACOS 3요소(Collaboration / Remote Operation / Security)와 도구 지형</td><td class="min">30</td></tr>
+          <tr><td>Terraform CLI</td>
+              <td><span class="mono">init · plan · apply · destroy · fmt · validate · state · import · console · workspace</span> — 실제 터미널에서 시연. plan 출력 읽는 법에 시간을 쓰세요.</td><td class="min">30</td></tr>
+          <tr><td>HCL 기초 <span class="pill lab">LAB</span></td>
+              <td>블록 구조, provider, resource, data source, variable / local / output, <span class="mono">tfvars</span> 우선순위<ul><li>실습: S3 버킷 + 태그를 변수로 받아 생성</li></ul></td><td class="min">60</td></tr>
+          <tr><td>상태 관리 <span class="pill lab">LAB</span></td>
+              <td>state 파일의 정체, drift, <span class="mono">terraform state</span> 서브커맨드, S3 backend + DynamoDB lock, <span class="mono">terraform_remote_state</span><ul><li>실습: 이후 전 모듈이 쓸 공용 backend 구성</li></ul></td><td class="min">45</td></tr>
+          <tr><td>반복·조건·모듈 <span class="pill lab">LAB</span></td>
+              <td><span class="mono">count / for_each / dynamic / for</span> 표현식, 조건 표현식, 모듈 구조와 입출력, Registry 모듈 사용법<ul><li>실습: 다음 모듈에서 쓸 <span class="mono">modules/</span> 뼈대 만들기</li></ul></td><td class="min">60</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>여기서 만든 backend와 <span class="mono">modules/</span> 뼈대를 이후 8개 모듈이 계속 씁니다.</b> 상태 관리를 대충 넘기면 모듈 4의 Atlantis가 통째로 흔들립니다.</div>
+    </article>
+
+    <!-- M2 -->
+    <article class="module" id="m2">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"network"</b> { depends_on = [module.foundation] }</p>
+          <h3>02 — VPC와 애플리케이션 네트워킹</h3>
+          <a class="mod-link" href="part2-vpc-networking.html">강의 자료 열기 →</a>
+          <p class="mod-goal">이후 모든 모듈(EC2·ECS·EKS·Jenkins)이 올라탈 VPC를 직접 코드로 만들고, VPC Lattice로 서비스 단위 연결까지 다룹니다. 여기서 만든 모듈을 끝까지 재사용하므로 서브넷 설계에 시간을 아끼지 마세요.</p>
+        </div>
+        <div class="mod-dur"><span class="h">4.5h</span><span class="l">2.75 THEORY / 1.75 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>AWS 네트워크 서비스 조망</td>
+              <td>VPC, Transit Gateway, PrivateLink, VPC Lattice, ELB, Route 53, CloudFront, Direct Connect — 각 서비스가 어느 계층에서 무슨 문제를 푸는지</td><td class="min">25</td></tr>
+          <tr><td>VPC 심화</td>
+              <td>EC2-Classic 시절의 한계 → VPC 등장 배경, CIDR와 RFC 1918(/16~/28), Subnet·AZ·Route Table(서브넷당 예약 IP 5개), NAT Gateway + EIP, Internet Gateway(VPC당 1개), Security Group(Stateful·허용만) vs NACL(Stateless·거부 가능·번호순), Flow Logs, Gateway vs Interface Endpoint, 라우팅 결정 규칙(longest prefix match)</td><td class="min">55</td></tr>
+          <tr><td>VPC 구성 <span class="pill lab">LAB</span></td>
+              <td>Multi-AZ 3-tier 서브넷, <span class="mono">for_each</span> 반복 생성, <span class="mono">nat_strategy</span>(none/single/per_az)를 변수로, S3 Gateway Endpoint — 모듈 1의 뼈대에 채워 넣기</td><td class="min">55</td></tr>
+          <tr><td>VPC 연결 옵션</td>
+              <td>Peering(전이적 전송 미지원) · TGW(Association vs Propagation, appliance mode) · PrivateLink · Lattice 4자 비교와 선택 기준</td><td class="min">30</td></tr>
+          <tr><td>Peering 구성 <span class="pill lab">LAB</span></td>
+              <td>두 VPC 연결, 양쪽 라우팅 테이블 갱신, SG까지 열어 통신 검증</td><td class="min">25</td></tr>
+          <tr><td>VPC Lattice <span class="pill lab">200~300</span></td><td>L3 연결의 한계와 Lattice의 접근, 구성 요소(Service Network·Service·Listener·Rule·Target Group), link-local 주소로 CIDR 중복 우회, IAM Auth Policy 3중 평가와 SigV4, Resource Gateway·Resource Configuration으로 RDS 등 TCP 리소스 공유, 액세스 로그와 메트릭, 한계와 비용</td><td class="min">50</td></tr>
+          <tr><td>Lattice 구성 <span class="pill lab">LAB</span></td><td>서비스 네트워크 생성, Lambda 타겟 그룹, Auth Policy로 메서드·경로 제한, SigV4 호출 검증, 가중치 카나리 규칙</td><td class="min">30</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>주의:</b> NAT Gateway와 Lattice 서비스는 존재하는 동안 계속 과금됩니다. 세션 종료 시 <span class="mono">destroy</span>하는 습관을 이 모듈에서 잡아두세요.</div>
+    </article>
+
+    <!-- M3 -->
+    <article class="module" id="m3">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"identity"</b> { depends_on = [module.network] }</p>
+          <h3>03 — IAM과 시크릿 관리 (SOPS)</h3>
+          <a class="mod-link" href="part3-iam-secrets.html">강의 자료 열기 →</a>
+          <p class="mod-goal">Atlantis에 넘길 권한 경계와, Git에 올라갈 민감정보 암호화 체계를 먼저 세웁니다. 모듈 4의 전제 조건입니다.</p>
+        </div>
+        <div class="mod-dur"><span class="h">4.0h</span><span class="l">2.75 THEORY / 1.25 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>IAM 이해하기</td>
+              <td>User / Group / Role / Policy, STS 임시 자격 증명, Identity-based vs Resource-based 정책, 동일 계정 vs 크로스 계정 평가 차이, 기본 Deny와 명시적 Deny 우선순위, CloudTrail(90일 보관 후 S3)</td><td class="min">45</td></tr>
+          <tr><td>환경별 IAM 적용</td>
+              <td>ECS의 Task Execution Role vs Task Role, EC2 Instance Profile, Lambda Execution Role, EKS의 IRSA와 Pod Identity — 뒤의 모듈 6·7·8에서 그대로 재등장하는 지도</td><td class="min">30</td></tr>
+          <tr><td>IAM Best Practice</td>
+              <td>Root 사용 자제, MFA, 액세스 키 교체, Role 기반 임시 자격 증명, 미사용 리소스 정리, 정책 조건(Condition), 최소 권한, 멀티 계정 가드레일, 활동 모니터링</td><td class="min">30</td></tr>
+          <tr><td>IAM 구성 <span class="pill lab">LAB</span></td>
+              <td>Terraform으로 Role·Policy 작성, 신뢰 정책 이해, <span class="mono">aws_iam_policy_document</span>, 크로스 계정 AssumeRole</td><td class="min">45</td></tr>
+          <tr><td>KMS</td>
+              <td>키 관리 타입 3종(AWS Managed / Customer Managed / Custom Key Store), 봉투 암호화 흐름 — GenerateDataKey → 평문 키로 암호화 → 평문 키 폐기 → 암호화된 키와 함께 보관</td><td class="min">30</td></tr>
+          <tr><td>Secrets Manager와 Parameter Store</td>
+              <td>Secrets Manager(자동 로테이션·버전·JSON) vs Parameter Store(선택적 암호화·Standard 무료·단순 K-V) 비교표와 선택 기준</td><td class="min">30</td></tr>
+          <tr><td>SOPS 적용 <span class="pill lab">LAB</span></td>
+              <td>KMS 키로 <span class="mono">secrets.enc.yaml</span> 암호화, <span class="mono">.sops.yaml</span> 규칙, Terraform SOPS Provider로 복호화해 리소스 생성, Git에는 암호문만 남는 것 확인</td><td class="min">30</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>SOPS 실습 전에 KMS·IAM·SOPS·Atlantis가 어떻게 물리는지 그림 한 장으로 정리하고 들어가세요.</b> 이 관계가 안 잡히면 모듈 4에서 복호화가 왜 되는지 설명이 안 됩니다.</div>
+    </article>
+
+    <!-- M4 -->
+    <article class="module" id="m4">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"gitops"</b> { depends_on = [module.network, module.identity] }</p>
+          <h3>04 — Atlantis와 GitHub Provider</h3>
+          <a class="mod-link" href="part4-atlantis-github.html">강의 자료 열기 →</a>
+          <p class="mod-goal">여기서부터 <span class="mono">terraform apply</span>를 손으로 치지 않습니다. PR이 인프라 변경의 유일한 입구가 되는 전환점.</p>
+        </div>
+        <div class="mod-dur"><span class="h">3.5h</span><span class="l">1.75 THEORY / 1.75 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>Atlantis 개념과 동작</td>
+              <td>TACOS로서의 Atlantis, 도입 이유 3가지(협업 / 정확성·속도 / 권한·감사), Deployment Type, Webhook → plan → 리뷰 → apply 동작 흐름</td><td class="min">30</td></tr>
+          <tr><td>초기 셋팅</td>
+              <td>4가지 사전 준비 — AWS 계정·Access Key, GitHub Personal Access Token, 실습 Repository Clone, 도메인·인증서(HTTPS Webhook용, Optional)</td><td class="min">30</td></tr>
+          <tr><td>Atlantis 구성 <span class="pill lab">LAB</span></td>
+              <td>모듈 2의 VPC 위에 Atlantis 배포, Webhook 연결, <span class="mono">atlantis.yaml</span> workflow 정의, 모듈 3의 IAM Role로 권한 분리<ul><li><b>전환 실습</b>: 모듈 2·3에서 로컬로 만든 코드를 PR로 올려 <span class="mono">atlantis plan → apply</span>로 재현</li></ul></td><td class="min">75</td></tr>
+          <tr><td>GitHub Provider</td>
+              <td>Repository·Branch Protection·Team·Collaborator를 코드로 관리, Atlantis에 GitHub Provider 설정 — 슬라이드가 없어 코드 시연으로 진행</td><td class="min">30</td></tr>
+          <tr><td>Action Secrets를 IaC로 <span class="pill lab">LAB</span></td>
+              <td>SOPS로 암호화한 값을 Terraform이 복호화해 <span class="mono">github_actions_secret</span>으로 주입 — 사람에게 콘솔 권한을 주지 않고 시크릿을 관리하는 형태 완성</td><td class="min">45</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>이 모듈을 마치면 인프라 변경의 입구가 PR 하나로 좁혀집니다.</b> 콘솔 권한 없이도 시크릿과 GitHub 설정까지 코드로 관리되는 상태가 목표입니다.</div>
+    </article>
+
+    <!-- M5 -->
+    <article class="module" id="m5">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"cicd"</b> { depends_on = [module.gitops] }</p>
+          <h3>05 — CI/CD 파이프라인</h3>
+          <a class="mod-link" href="part5-cicd.html">강의 자료 열기 →</a>
+          <p class="mod-goal">모듈 6~8의 배포 실습이 공통으로 쓸 빌드·배포 기반을 세웁니다. 도구 비교는 짧게, Jenkins + CodeBuild 구성에 시간을 몰아주세요.</p>
+        </div>
+        <div class="mod-dur"><span class="h">3.0h</span><span class="l">2.0 THEORY / 1.0 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>CI/CD 개념</td>
+              <td>CI / Continuous Delivery / Continuous Deployment의 구분, CI 핵심 원칙 8가지, CD 핵심 원칙, 파이프라인 각 단계에서의 IaC 위치</td><td class="min">30</td></tr>
+          <tr><td>다양한 CI/CD 도구</td>
+              <td>GitHub Actions, GitLab Runner, CircleCI, TravisCI, Jenkins — 호스팅 형태·확장성·비용 관점 비교</td><td class="min">30</td></tr>
+          <tr><td>AWS Code Series</td>
+              <td>CodeBuild(빌드 환경·커스텀 이미지·CloudWatch 로그), CodeDeploy(In-place vs Blue/Green, 자동 롤백), CodePipeline(단계 연결)</td><td class="min">30</td></tr>
+          <tr><td>Jenkins 이해</td>
+              <td>특징 4가지, Master-Agent 구조와 Static / Dynamic Agent, 선언형 vs 스크립트 파이프라인, Job DSL로 Job을 코드화</td><td class="min">30</td></tr>
+          <tr><td>CI/CD 구성 <span class="pill lab">LAB</span></td>
+              <td>Terraform으로 CodeBuild 프로젝트 생성 → Jenkins 구성(Job DSL 포함) → 둘을 연계해 빌드 산출물을 S3/ECR로 올리는 파이프라인 완성</td><td class="min">60</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>여기서 만든 파이프라인 하나를 모듈 6·7·8이 각각 EC2·ECS·EKS로 배포합니다.</b> 세 번 반복되는 구조라는 걸 미리 알려주면 뒤가 훨씬 빨라집니다.</div>
+    </article>
+
+    <!-- M6 -->
+    <article class="module" id="m6">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"compute_ec2"</b> { depends_on = [module.cicd] }</p>
+          <h3>06 — EC2 기반 서비스</h3>
+          <a class="mod-link" href="part6-ec2.html">강의 자료 열기 →</a>
+          <p class="mod-goal">가장 단순한 배포 대상으로 Blue/Green의 감각을 먼저 익힙니다. ECS·EKS의 배포 전략을 이해하기 위한 기준점.</p>
+        </div>
+        <div class="mod-dur"><span class="h">2.0h</span><span class="l">1.0 THEORY / 1.0 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>EC2 이해하기</td>
+              <td>인스턴스 유형 체계, 라이프사이클과 상태별 과금표(Running / Stopped / Terminated에서 컴퓨팅·EBS·네트워크·EIP 비용), EC2 Auto Scaling, 안티패턴 3가지 — SG AnyOpen, userdata 미활용, AMI 관리 미흡</td><td class="min">30</td></tr>
+          <tr><td>서비스 구성 설계</td>
+              <td>4단계 흐름 — ① GitHub Action에서 jar 빌드 후 S3 저장 ② Instance Profile·LB·Listener 생성 ③ buildspec 기반 CodeBuild와 ASG 생성, Target Health Check ④ Blue/Green 전환 후 이전 버전 정리</td><td class="min">30</td></tr>
+          <tr><td>EC2 배포 <span class="pill lab">LAB</span></td>
+              <td>ASG + ALB 구성, Launch Template과 userdata, Jenkins/CodeBuild 연동 Blue/Green 배포와 롤백 확인</td><td class="min">60</td></tr>
+        </tbody>
+      </table></div>
+    </article>
+
+    <!-- M7 -->
+    <article class="module" id="m7">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"compute_ecs"</b> { depends_on = [module.compute_ec2] }</p>
+          <h3>07 — ECS 기반 서비스</h3>
+          <a class="mod-link" href="part7-ecs.html">강의 자료 열기 →</a>
+          <p class="mod-goal">컨테이너 오케스트레이션의 최소 단위를 잡고, 용량 공급자와 배포 전략을 수식 수준까지 이해시킵니다.</p>
+        </div>
+        <div class="mod-dur"><span class="h">3.0h</span><span class="l">2.0 THEORY / 1.0 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>Container와 VM</td>
+              <td>컨테이너의 정의와 특징 5가지, 컨테이너 발전 과정, VM의 문제 3가지(큰 이미지·느린 시작·환경 불일치) → 컨테이너의 해결 3가지</td><td class="min">30</td></tr>
+          <tr><td>ECS 이해하기</td>
+              <td>Fargate와 EC2 선택, 네트워크 모드 bridge / host / awsvpc, 컨테이너 단위 IAM, 서비스 디스커버리·로드밸런싱. 구성 요소: Cluster → Service → Task Definition → Task → Container</td><td class="min">30</td></tr>
+          <tr><td>용량 공급자</td>
+              <td>Capacity Provider Strategy, EC2 vs Fargate 공급자, <span class="mono">CapacityProviderReservation = M/N × 100</span> 계산과 스케일 판단 예시, base / weight로 On-demand·Spot 비율 조절</td><td class="min">30</td></tr>
+          <tr><td>배포 전략</td>
+              <td>Rolling Update, Blue/Green, Canary, Linear — 각 전략의 트래픽 전환 방식과 선택 기준</td><td class="min">30</td></tr>
+          <tr><td>ECS 배포 <span class="pill lab">LAB</span></td>
+              <td>Cluster·Service·Task Definition을 Terraform으로 구성, GitHub Action Blue/Green 배포, 이어서 Jenkins 경로로 동일 배포 재현</td><td class="min">60</td></tr>
+        </tbody>
+      </table></div>
+    </article>
+
+    <!-- M8 -->
+    <article class="module" id="m8">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"compute_eks"</b> { depends_on = [module.compute_ecs] }</p>
+          <h3>08 — EKS 기반 서비스</h3>
+          <a class="mod-link" href="part8-eks.html">강의 자료 열기 →</a>
+          <p class="mod-goal">모듈 3에서 예고한 IRSA·Pod Identity를 회수하고, GitOps 개념을 Helm 배포로 마무리합니다. 난이도 최고점.</p>
+        </div>
+        <div class="mod-dur"><span class="h">3.5h</span><span class="l">1.5 THEORY / 2.0 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>EKS 이해하기</td>
+              <td>EKS 특징과 비용 구조, ECS vs EKS 비교표(최소 단위 Task/Pod, 러닝 커브, 노드당 Pod 한도, 클러스터 비용), Control Plane / Data Plane 구조, 접근 제어 2가지(aws-auth ConfigMap vs EKS API Access Entries), IRSA 흐름과 Pod Identity 비교</td><td class="min">45</td></tr>
+          <tr><td>AutoScaling 전략</td>
+              <td>HPA(수평, CPU/Memory·KEDA 커스텀 메트릭), VPA(수직, 4가지 모드), Cluster Autoscaler(ASG 기반·느림) vs Karpenter(Groupless·Pending Pod 기준·노드 통합·Spot 비율 조절)</td><td class="min">30</td></tr>
+          <tr><td>EKS 구성 <span class="pill lab">LAB</span></td>
+              <td>클러스터·노드그룹 생성, Access Entry 설정, IRSA로 Pod에 권한 부여, Karpenter 배치</td><td class="min">45</td></tr>
+          <tr><td>GitOps와 Helm</td>
+              <td>Helm의 Chart / Repository / Release, 템플릿 동작 원리, GitOps 4대 개념(SSOT·선언형 설정·자동 동기화·관측 가능한 상태), Push 기반 vs Pull 기반 GitOps</td><td class="min">30</td></tr>
+          <tr><td>배포 파이프라인 <span class="pill lab">LAB</span></td>
+              <td>Helm 차트 템플릿 작성 및 배포, Self-hosted Runner 구성, GitHub Actions로 서비스 배포 파이프라인 완성</td><td class="min">60</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>난이도 최고점입니다.</b> 모듈 3에서 예고한 IRSA·Pod Identity가 여기서 회수되므로, IAM이 흔들리는 멘티가 있으면 모듈 8 전에 한 번 복습 시간을 잡으세요.</div>
+    </article>
+
+    <!-- M9 -->
+    <article class="module" id="m9">
+      <div class="mod-head">
+        <div>
+          <p class="mod-sig">module <b>"observability"</b> { depends_on = [module.compute_eks] }</p>
+          <h3>09 — Observability</h3>
+          <a class="mod-link" href="part9-observability.html">강의 자료 열기 →</a>
+          <p class="mod-goal">SaaS까지 Terraform으로 관리해 "코드 밖에 남는 수동 설정이 없다"는 결론으로 과정을 닫습니다.</p>
+        </div>
+        <div class="mod-dur"><span class="h">2.5h</span><span class="l">1.5 THEORY / 1.0 LAB</span></div>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>토픽</th><th>다루는 내용</th><th>분</th></tr></thead>
+        <tbody>
+          <tr><td>Datadog 소개</td>
+              <td>Infrastructure 모니터링(Host·Container·Process·네트워크 I/O, 클라우드 비용), APM(메소드 추적·DB Monitoring·병목 탐지), Log Management와 Observability Pipelines, RUM·Synthetic Test, Monitor·Incident·SLI/SLO, Terraform Datadog Provider</td><td class="min">45</td></tr>
+          <tr><td>Datadog 구성 <span class="pill lab">LAB</span></td>
+              <td>Atlantis에 Datadog Provider 설정, AWS Integration 연동, Monitor·Dashboard를 Terraform 리소스로 생성</td><td class="min">30</td></tr>
+          <tr><td>Sumo Logic 소개</td>
+              <td>SIEM 관점의 포지션, Collector 2종(Hosted — 인증정보 기반, SaaS 연동 / Installed — Host·DaemonSet 에이전트), Data Tier 3종의 용도와 단가(Continuous / Frequent / Infrequent), Terraform Sumo Logic Provider</td><td class="min">45</td></tr>
+          <tr><td>Sumo Logic 구성 <span class="pill lab">LAB</span></td>
+              <td>Collector·Source를 코드로 생성, 로그 모니터링과 알림 구성, 앞 모듈의 EKS 로그를 실제로 흘려보기</td><td class="min">30</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mod-foot"><b>마무리 세션:</b> 실무 사례 8가지(사용자 생성 알람 자동화, Multi Account Jenkins 배포, DB 유저 생성 자동화, Multi VPC 통합 ArgoCD, ANF 기반 In/Outbound 제어, AWS–IDC 하이브리드 등)를 놓고 Q&amp;A로 닫습니다.</div>
+    </article>
+  </div>
+</section>
+
+<section id="alloc">
+  <div class="wrap">
+    <div class="sec-head"><h2>시간 배분</h2><span class="tag">THEORY 16.5h / LAB 14.0h</span></div>
+    <p class="lede">이론 16.5시간, 실습 14시간으로 거의 반반입니다. 모듈 1과 4는 실습이, 모듈 2·3·5·7은 이론이 앞섭니다. 가로 눈금은 0~5시간 척도입니다.</p>
+    <div class="alloc">
+      <div class="alloc-row"><span class="nm">01 기초</span><span class="bar"><i class="theory" style="width:25%"></i><i class="lab" style="width:65%"></i></span><span class="val">4.5h</span></div>
+      <div class="alloc-row"><span class="nm">02 VPC · Lattice</span><span class="bar"><i class="theory" style="width:55%"></i><i class="lab" style="width:35%"></i></span><span class="val">4.5h</span></div>
+      <div class="alloc-row"><span class="nm">03 IAM / SOPS</span><span class="bar"><i class="theory" style="width:55%"></i><i class="lab" style="width:25%"></i></span><span class="val">4.0h</span></div>
+      <div class="alloc-row"><span class="nm">04 Atlantis + GitHub</span><span class="bar"><i class="theory" style="width:30%"></i><i class="lab" style="width:40%"></i></span><span class="val">3.5h</span></div>
+      <div class="alloc-row"><span class="nm">05 CI/CD</span><span class="bar"><i class="theory" style="width:40%"></i><i class="lab" style="width:20%"></i></span><span class="val">3.0h</span></div>
+      <div class="alloc-row"><span class="nm">06 EC2</span><span class="bar"><i class="theory" style="width:20%"></i><i class="lab" style="width:20%"></i></span><span class="val">2.0h</span></div>
+      <div class="alloc-row"><span class="nm">07 ECS</span><span class="bar"><i class="theory" style="width:40%"></i><i class="lab" style="width:20%"></i></span><span class="val">3.0h</span></div>
+      <div class="alloc-row"><span class="nm">08 EKS</span><span class="bar"><i class="theory" style="width:35%"></i><i class="lab" style="width:35%"></i></span><span class="val">3.5h</span></div>
+      <div class="alloc-row"><span class="nm">09 Observability</span><span class="bar"><i class="theory" style="width:30%"></i><i class="lab" style="width:20%"></i></span><span class="val">2.5h</span></div>
+      <div class="axis"><span></span><span class="ticks"><span>0h</span><span>1h</span><span>2h</span><span>3h</span><span>4h</span><span>5h</span></span><span></span></div>
+      <div class="legend"><span><i class="theory"></i>이론·개념</span><span><i class="lab"></i>실습</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="tracks">
+  <div class="wrap">
+    <div class="sec-head"><h2>운영 옵션</h2><span class="tag">DELIVERY</span></div>
+    <p class="lede">멘티의 배경과 가용 시간에 따라 두 가지로 접습니다. 줄여야 할 때 무엇을 먼저 버릴지 미리 정해두면 현장에서 편합니다.</p>
+    <div class="grid2">
+      <div class="panel">
+        <h4>표준 — 10주 · 30.5시간</h4>
+        <p>주 1회 3시간 세션. 모듈 1과 3만 2회로 쪼개고 나머지는 한 세션씩.</p>
+        <ul>
+          <li><b>1~2주</b> 모듈 1 기초</li>
+          <li><b>3주</b> 모듈 2 VPC · Lattice</li>
+          <li><b>4~5주</b> 모듈 3 IAM / SOPS</li>
+          <li><b>6주</b> 모듈 4 Atlantis</li>
+          <li><b>7주</b> 모듈 5 CI/CD</li>
+          <li><b>8주</b> 모듈 6+7 EC2 · ECS</li>
+          <li><b>9주</b> 모듈 8 EKS</li>
+          <li><b>10주</b> 모듈 9 + 실무 사례 8가지</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>압축 — 2일 · 16시간</h4>
+        <p>이미 AWS를 쓰고 있는 멘티 대상. 이론을 절반으로 줄이고 실습만 남깁니다.</p>
+        <ul>
+          <li><b>Day 1</b> 기초 3h · VPC 2.5h · IAM/SOPS 2h · Atlantis 1.5h</li>
+          <li><b>Day 2</b> CI/CD 1.5h · EC2 1h · ECS 2h · EKS 2h · Observability 0.5h</li>
+          <li><b>먼저 버릴 것</b> — AWS 네트워크 서비스 조망, VPC Lattice 심화, CI/CD 도구 비교, Container와 VM, Sumo Logic</li>
+          <li><b>절대 줄이지 말 것</b> — 상태 관리, SOPS, Atlantis 전환 실습</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>사전 준비 체크리스트</h4>
+        <ul>
+          <li>멘티별 AWS 계정 또는 격리된 IAM 사용자</li>
+          <li>GitHub 조직과 실습 Repository, PAT 발급 안내</li>
+          <li>Terraform · AWS CLI · SOPS · kubectl · helm 설치 확인</li>
+          <li>도메인·ACM 인증서 (Atlantis Webhook HTTPS용)</li>
+          <li>Datadog · Sumo Logic 트라이얼 계정</li>
+          <li>비용 가드레일 — Budget 알림, 매 세션 종료 시 <span class="mono">destroy</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>문제은행</h4>
+        <p>9개 모듈의 면접 문항 <b>121개</b>를 한자리에 모았습니다. 모듈·난이도로 걸러 보고, 랜덤 10문항으로 모의 면접을 돌릴 수 있습니다.</p>
+        <p><a class="mod-link" href="question-bank.html" style="margin-top:4px">문제은행 열기 →</a></p>
+      </div>
+
+      <div class="panel">
+        <h4>멘티가 자주 막히는 지점</h4>
+        <p>미리 알고 있으면 세션이 훨씬 매끄럽습니다.</p>
+        <ul>
+          <li><b>상태 파일</b> — 로컬 state로 시작했다가 backend로 옮길 때 <span class="mono">terraform init -migrate-state</span>에서 대부분 한 번 막힙니다</li>
+          <li><b>IAM 신뢰 정책</b> — 권한 정책과 신뢰 정책의 구분이 안 되면 크로스 계정에서 전부 무너집니다</li>
+          <li><b>SOPS</b> — KMS 키 권한이 없으면 복호화가 조용히 실패합니다</li>
+          <li><b>Atlantis Webhook</b> — HTTPS·인증서 문제로 PR 이벤트가 안 들어오는 경우가 가장 흔합니다</li>
+          <li><b>EKS 접근 제어</b> — Access Entry를 안 걸어두고 <span class="mono">kubectl</span>이 안 된다고 하는 상황</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Terraform · AWS 실무 멘토링 진행 계획. 9개 모듈 · 총 30.5시간.</p>
+    <p>시간 배분은 내용 밀도를 기준으로 잡은 기준치이며, 멘티의 진행 속도에 맞춰 조정합니다.</p>
+  </div>
+</footer>
+
+</body>
+</html>

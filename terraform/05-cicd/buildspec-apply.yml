@@ -1,0 +1,30 @@
+version: 0.2
+
+# apply 단계. plan 단계가 만든 tfplan 그대로를 씁니다.
+# 여기서 다시 plan을 뜨면 "승인한 내용"과 "적용한 내용"이 달라집니다.
+# 이게 CI/CD에서 가장 많이 나오는 설계 실수입니다.
+
+phases:
+  install:
+    commands:
+      - |
+        curl -fsSL -o /tmp/tf.zip \
+          "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+        unzip -o -q /tmp/tf.zip -d /tmp/bin
+
+  build:
+    commands:
+      - export PATH="/tmp/bin:$PATH"
+      - cd "$TF_DIR"
+      - test -f tfplan || { echo "tfplan 이 없습니다 — plan 아티팩트 전달을 확인하세요"; exit 1; }
+      - terraform init -input=false
+      # ★ -auto-approve 가 아니라 "저장된 plan 파일"을 적용합니다.
+      #   plan 파일을 주면 apply는 승인을 묻지 않고, 동시에
+      #   state가 그 사이 바뀌었으면 거부합니다. 이게 안전장치입니다.
+      - terraform apply -input=false -lock-timeout=5m tfplan
+      - terraform output -json > outputs.json
+
+artifacts:
+  files:
+    - outputs.json
+  base-directory: .

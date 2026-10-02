@@ -1,0 +1,10 @@
+# 모듈 2의 출력을 그대로 넣으세요.
+#
+#   cd ../02-network && terraform output -json | jq
+#
+vpc_id             = "vpc-xxxxxxxx"
+public_subnet_ids  = ["subnet-aaaa", "subnet-bbbb"]
+private_subnet_ids = ["subnet-cccc", "subnet-dddd"]
+
+# Floci에서는 AMI 조회가 비거나 더미를 반환합니다.
+# ami_id = "ami-0123456789abcdef0"
