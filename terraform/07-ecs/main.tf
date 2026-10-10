@@ -14,9 +14,6 @@ locals {
   name = "${var.project}-${var.environment}-app"
 }
 
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
 # ── 클러스터 ───────────────────────────────────────────────────────
 resource "aws_ecs_cluster" "this" {
   name = local.name

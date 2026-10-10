@@ -40,6 +40,12 @@ for dir in "$ROOT"/terraform/[0-9][0-9]-*/; do
       continue
     fi
 
+    # Provider를 추가 선언한 모듈은 자체 versions.tf가 shared 파일을 대체합니다.
+    if [[ "$f" == "versions.tf" && -f "${dir}versions.tf" ]]; then
+      rm -f "$dest"
+      continue
+    fi
+
     {
       echo "# ┌──────────────────────────────────────────────────────────┐"
       echo "# │ 자동 생성 — 고치지 마세요.                               │"

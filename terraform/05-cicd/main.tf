@@ -11,8 +11,6 @@ locals {
   name = "${var.project}-${var.environment}-tf"
 }
 
-data "aws_caller_identity" "current" {}
-
 # ── 아티팩트 버킷 ──────────────────────────────────────────────────
 resource "aws_s3_bucket" "artifacts" {
   bucket        = "${local.name}-artifacts-${data.aws_caller_identity.current.account_id}"

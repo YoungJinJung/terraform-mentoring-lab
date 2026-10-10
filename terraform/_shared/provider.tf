@@ -24,9 +24,9 @@ provider "aws" {
   access_key                  = var.use_floci ? "test" : null
   secret_key                  = var.use_floci ? "test" : null
   skip_credentials_validation = var.use_floci
-  skip_metadata_api_check      = var.use_floci
-  skip_requesting_account_id   = var.use_floci
-  skip_region_validation       = var.use_floci
+  skip_metadata_api_check     = var.use_floci
+  skip_requesting_account_id  = var.use_floci
+  skip_region_validation      = var.use_floci
 
   # Floci의 S3는 path-style 주소를 씁니다.
   s3_use_path_style = var.use_floci

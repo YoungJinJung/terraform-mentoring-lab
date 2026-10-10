@@ -14,9 +14,6 @@ locals {
   name = "${var.project}-${var.environment}"
 }
 
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
 # ── 알림 ───────────────────────────────────────────────────────────
 resource "aws_sns_topic" "alerts" {
   name = "${local.name}-alerts"
@@ -256,7 +253,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           }
         },
       ],
-      var.alb_arn_suffix == "" ? [] : [
+      flatten([for _ in range(var.alb_arn_suffix == "" ? 0 : 1) : [
         {
           type = "metric", x = 12, y = 0, width = 12, height = 6
           properties = {
@@ -284,7 +281,7 @@ resource "aws_cloudwatch_dashboard" "main" {
             view   = "timeSeries"
           }
         },
-      ],
+      ]]),
       [
         {
           # Logs Insights 위젯. 대시보드를 열 때마다 쿼리가 돌고

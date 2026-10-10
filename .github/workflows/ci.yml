@@ -48,13 +48,13 @@ jobs:
       - uses: actions/checkout@v5
         with: { submodules: false }
 
-      - name: conftest 정책 자체 검사
+      - name: conftest 정책 로드 검사
         run: |
           curl -fsSL -o /tmp/conftest.tar.gz \
             https://github.com/open-policy-agent/conftest/releases/download/v0.62.0/conftest_0.62.0_Linux_x86_64.tar.gz
           tar xzf /tmp/conftest.tar.gz -C /tmp conftest
-          /tmp/conftest verify --policy terraform/04-gitops/policies || true
-          /tmp/conftest parse terraform/04-gitops/policies/terraform.rego >/dev/null
+          printf '{"resource_changes":[]}\n' > /tmp/empty-plan.json
+          /tmp/conftest test --policy terraform/04-gitops/policies --parser json /tmp/empty-plan.json
 
   shell:
     runs-on: ubuntu-latest

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # eval "$(cat lab/scripts/env.sh)"
 #
 # 주의 — 이 변수들이 떠 있는 쉘에서 실제 AWS 작업을 하지 마세요.

@@ -48,9 +48,9 @@ resource "aws_iam_role_policy" "karpenter" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowScopedEC2Launch"
-        Effect = "Allow"
-        Action = ["ec2:RunInstances", "ec2:CreateFleet", "ec2:CreateLaunchTemplate"]
+        Sid      = "AllowScopedEC2Launch"
+        Effect   = "Allow"
+        Action   = ["ec2:RunInstances", "ec2:CreateFleet", "ec2:CreateLaunchTemplate"]
         Resource = "*"
         Condition = {
           StringEquals = {
