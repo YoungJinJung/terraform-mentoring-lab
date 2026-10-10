@@ -1,7 +1,7 @@
 # upstream/ — 참조 리포
 
-패스트캠퍼스 Terraform 과정에서 쓰는 원본 리포들을 **git submodule로**
-참조합니다. 복사본이 아니라 포인터이므로, 원본이 바뀌면
+실습 참고 자료의 원본 리포들을 **git submodule로** 참조합니다.
+복사본이 아니라 포인터이므로, 원본이 바뀌면
 `git submodule update --remote`로 따라갈 수 있습니다.
 
 ## 가져오기

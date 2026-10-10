@@ -160,7 +160,7 @@ terraform/02-network/_shared_provider.tf -> ../_shared/provider.tf
 
 ### `upstream/`
 
-패스트캠퍼스 과정의 원본 리포 8개를 submodule로 참조합니다.
+실습 참고용 원본 리포 8개를 submodule로 참조합니다.
 복사가 아니라 포인터입니다 — [`upstream/README.md`](upstream/README.md).
 
 ### `.gitignore`가 특별히 막는 것

@@ -68,3 +68,4 @@ __pycache__/
 
 # bootstrap.sh 가 만드는 _shared 복사본
 terraform/*/_shared_*.tf
+.omx/

@@ -26,7 +26,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - floci-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_floci/health || curl -sf http://localhost:4566/ || exit 1"]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/4566"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -36,13 +36,13 @@ services:
   # AWS 콘솔 스타일 웹 UI
   # ─────────────────────────────────────────────────────────────
   floci-ui:
-    image: flociio/floci-ui:${FLOCI_UI_TAG:-latest}
+    image: floci/floci-ui:${FLOCI_UI_TAG:-latest}
     container_name: tfm-floci-ui
     ports:
       - "127.0.0.1:4500:4500"
       - "127.0.0.1:4501:4501"
     environment:
-      AWS_ENDPOINT: http://floci:4566
+      FLOCI_ENDPOINT: http://floci:4566
     depends_on:
       floci:
         condition: service_healthy
